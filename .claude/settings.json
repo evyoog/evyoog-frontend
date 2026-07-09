@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(NODE_PATH=/tmp/node_modules node /tmp/claude-1000/-workspaces-evyoog-frontend/c53a5af0-c2c0-468a-8048-d04e9fa6982e/scratchpad/screenshot2.mjs)",
+      "Bash(pkill -f \"vite\")"
+    ]
+  }
+}
