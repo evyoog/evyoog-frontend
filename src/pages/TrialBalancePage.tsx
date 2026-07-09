@@ -5,8 +5,8 @@ import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { getTrialBalance, listPeriods } from '../api/gl';
-import type { Period, TrialBalanceReport, TrialBalanceRow } from '../types';
+import { getTrialBalance, getPeriodStatus } from '../api/gl';
+import type { PeriodStatus, TrialBalanceReport, TrialBalanceRow } from '../types';
 import { formatINR } from '../utils/format';
 
 const QUALIFIER_ORDER = ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expense'];
@@ -59,7 +59,7 @@ function exportCsv(report: TrialBalanceReport) {
 
 export default function TrialBalancePage() {
   const { user } = useAuth();
-  const [periods, setPeriods] = useState<Period[]>([]);
+  const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [report, setReport] = useState<TrialBalanceReport | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState(true);
@@ -69,12 +69,12 @@ export default function TrialBalancePage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listPeriods(user.legalEntityId)
+    getPeriodStatus(user.legalEntityId)
       .then((data) => {
         if (cancelled) return;
         setPeriods(data);
         const open = data.find((p) => p.status === 'OPEN');
-        if (open) setPeriodId(open.id);
+        if (open) setPeriodId(open.accountingPeriodId);
       })
       .catch(() => {
         if (!cancelled) setError('Failed to load periods.');
@@ -120,7 +120,7 @@ export default function TrialBalancePage() {
             >
               <option value="">Select a period</option>
               {periods.map((p) => (
-                <option key={p.id} value={p.id}>
+                <option key={p.accountingPeriodId} value={p.accountingPeriodId}>
                   {p.periodName}
                 </option>
               ))}

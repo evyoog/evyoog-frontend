@@ -6,14 +6,14 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { listJournals, listPeriods } from '../api/gl';
-import type { Journal, Period } from '../types';
+import { listJournals, getPeriodStatus } from '../api/gl';
+import type { Journal, PeriodStatus } from '../types';
 import { formatINR } from '../utils/format';
 
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
   const [journals, setJournals] = useState<Journal[]>([]);
-  const [openPeriod, setOpenPeriod] = useState<Period | null>(null);
+  const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -27,7 +27,7 @@ export default function DashboardPage() {
       try {
         const [journalPage, periods] = await Promise.all([
           listJournals({ legalEntityId: user!.legalEntityId, page: 0, size: 100 }),
-          listPeriods(user!.legalEntityId),
+          getPeriodStatus(user!.legalEntityId),
         ]);
         if (cancelled) return;
         setJournals(journalPage.content);

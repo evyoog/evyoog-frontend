@@ -5,7 +5,7 @@ import type {
   Journal,
   Ledger,
   Page,
-  Period,
+  PeriodStatus,
   TrialBalanceReport,
 } from '../types';
 
@@ -36,8 +36,8 @@ export async function getTrialBalance(legalEntityId: string, periodId: string) {
   return data.data;
 }
 
-export async function listPeriods(legalEntityId: string) {
-  const { data } = await api.get<ApiResponse<Period[]>>('/api/v1/gl/periods', {
+export async function getPeriodStatus(legalEntityId: string) {
+  const { data } = await api.get<ApiResponse<PeriodStatus[]>>('/api/v1/gl/period-status', {
     params: { legalEntityId },
   });
   return data.data;

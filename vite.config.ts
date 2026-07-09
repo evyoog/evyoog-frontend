@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://turbo-spork-xr5pj4xv976gfv9jj-8080.app.github.dev',
         changeOrigin: true,
       },
     },

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: 'https://turbo-spork-xr5pj4xv976gfv9jj-8080.app.github.dev',
   headers: { 'Content-Type': 'application/json' },
 });
 

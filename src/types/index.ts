@@ -90,12 +90,12 @@ export interface TrialBalanceReport {
   isBalanced: boolean;
 }
 
-export interface Period {
-  id: string;
+export type PeriodStatusValue = 'NOT_OPENED' | 'FUTURE_ENTERABLE' | 'OPEN' | 'CLOSED' | 'LOCKED';
+
+export interface PeriodStatus {
+  accountingPeriodId: string;
   periodName: string;
-  startDate: string;
-  endDate: string;
-  status: string;
+  status: PeriodStatusValue;
 }
 
 export interface Ledger {
