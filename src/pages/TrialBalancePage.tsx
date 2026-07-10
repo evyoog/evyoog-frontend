@@ -13,7 +13,8 @@ const QUALIFIER_ORDER = ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expense'
 
 function groupByQualifier(rows: TrialBalanceRow[]) {
   const groups = new Map<string, TrialBalanceRow[]>();
-  for (const row of rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  for (const row of safeRows) {
     const key = row.accountQualifier || 'Other';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(row);
@@ -24,6 +25,27 @@ function groupByQualifier(rows: TrialBalanceRow[]) {
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
   return ordered;
+}
+
+// The backend response shape for this endpoint isn't fully pinned down yet
+// (see CLAUDE.md note-in-progress) — rows have shown up under `rows`,
+// `accounts`, or as a bare array. Normalize whatever comes back so the
+// rest of the page can assume a valid TrialBalanceReport.
+function normalizeReport(raw: unknown): TrialBalanceReport {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const rows = Array.isArray(obj.rows)
+    ? (obj.rows as TrialBalanceRow[])
+    : Array.isArray(obj.accounts)
+      ? (obj.accounts as TrialBalanceRow[])
+      : Array.isArray(raw)
+        ? (raw as TrialBalanceRow[])
+        : [];
+  return {
+    rows,
+    totalDebit: typeof obj.totalDebit === 'number' ? obj.totalDebit : 0,
+    totalCredit: typeof obj.totalCredit === 'number' ? obj.totalCredit : 0,
+    isBalanced: typeof obj.isBalanced === 'boolean' ? obj.isBalanced : false,
+  };
 }
 
 function exportCsv(report: TrialBalanceReport) {
@@ -76,7 +98,8 @@ export default function TrialBalancePage() {
         const open = data.find((p) => p.status === 'OPEN');
         if (open) setPeriodId(open.accountingPeriodId);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Failed to load periods:', err);
         if (!cancelled) setError('Failed to load periods.');
       })
       .finally(() => {
@@ -93,7 +116,7 @@ export default function TrialBalancePage() {
     setError('');
     try {
       const data = await getTrialBalance(user.legalEntityId, periodId);
-      setReport(data);
+      setReport(normalizeReport(data));
     } catch {
       setError('Failed to load trial balance. Please try again.');
     } finally {
