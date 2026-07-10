@@ -91,7 +91,7 @@ export default function JournalEntryPage() {
         const ledger = ledgers[0];
         if (ledger) {
           const accountList = await listChartOfAccounts(user.legalEntityId, ledger.id);
-          if (!cancelled) setAccounts(Array.isArray(accountList) ? accountList : []);
+          if (!cancelled) setAccounts(accountList);
         }
       })
       .catch(() => {

@@ -1,7 +1,7 @@
 import api from './axios';
 import type {
   ApiResponse,
-  ChartOfAccount,
+  ChartOfAccountsResponse,
   CreateJournalRequest,
   Journal,
   JournalCategory,
@@ -64,9 +64,9 @@ export async function listJournalCategories() {
 }
 
 export async function listChartOfAccounts(legalEntityId: string, ledgerId: string) {
-  const { data } = await api.get<ApiResponse<ChartOfAccount[] | Page<ChartOfAccount>>>(
+  const { data } = await api.get<ApiResponse<ChartOfAccountsResponse>>(
     '/api/v1/gl/chart-of-accounts',
     { params: { legalEntityId, ledgerId } },
   );
-  return Array.isArray(data.data) ? data.data : data.data.content;
+  return data.data.accounts;
 }

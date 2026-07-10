@@ -92,6 +92,13 @@ export interface ChartOfAccount {
   name: string;
 }
 
+export interface ChartOfAccountsResponse {
+  ledgerId: string;
+  totalCount: number;
+  postableCount: number;
+  accounts: ChartOfAccount[];
+}
+
 export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;
