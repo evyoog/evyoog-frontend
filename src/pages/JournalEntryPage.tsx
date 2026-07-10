@@ -12,6 +12,7 @@ import {
   listChartOfAccounts,
   listJournalCategories,
   listJournalSources,
+  listLedgers,
 } from '../api/gl';
 import type { ChartOfAccount, JournalCategory, JournalSource } from '../types';
 import { formatINR } from '../utils/format';
@@ -74,19 +75,24 @@ export default function JournalEntryPage() {
     Promise.all([
       listJournalSources(),
       listJournalCategories(),
-      listChartOfAccounts(user.legalEntityId),
+      listLedgers(user.legalEntityId),
       getPeriodStatus(user.legalEntityId),
     ])
-      .then(([sourceList, categoryList, accountList, periods]) => {
+      .then(async ([sourceList, categoryList, ledgers, periods]) => {
         if (cancelled) return;
         setSources(sourceList);
         setCategories(categoryList);
-        setAccounts(accountList);
         if (sourceList.length === 1) setJournalSourceId(sourceList[0].id);
         if (categoryList.length === 1) setJournalCategoryId(categoryList[0].id);
         const open = periods.find((p) => p.status === 'OPEN');
         const startDate = open ? openPeriodStartDate(open.periodName) : null;
         if (startDate) setGlDate(startDate);
+
+        const ledger = ledgers[0];
+        if (ledger) {
+          const accountList = await listChartOfAccounts(user.legalEntityId, ledger.id);
+          if (!cancelled) setAccounts(accountList);
+        }
       })
       .catch(() => {
         if (!cancelled) setError('Failed to load journal sources, categories, or accounts.');
