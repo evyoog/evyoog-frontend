@@ -140,7 +140,7 @@ export default function JournalEntryPage() {
         lines: lines.map((l, idx) => ({
           lineNumber: idx + 1,
           naturalAccountValueId: l.naturalAccountValueId,
-          accountCombination: { account: l.accountCode },
+          accountCombination: { NATURAL_ACCOUNT: l.accountCode },
           description: l.description,
           debitAmount: l.debit ? parseFloat(l.debit) : null,
           creditAmount: l.credit ? parseFloat(l.credit) : null,
