@@ -36,8 +36,6 @@ export async function getTrialBalance(legalEntityId: string, periodId: string) {
     '/api/v1/gl/reports/trial-balance',
     { params: { legalEntityId, periodId } },
   );
-  console.log('[getTrialBalance] raw response:', data);
-  console.log('[getTrialBalance] data.data:', data.data);
   return data.data;
 }
 

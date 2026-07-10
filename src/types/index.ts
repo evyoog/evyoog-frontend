@@ -103,11 +103,15 @@ export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;
   accountQualifier: string;
-  periodDebit: number;
-  periodCredit: number;
-  ytdDebit: number;
-  ytdCredit: number;
+  normalBalance: string;
+  beginningBalance: number;
+  periodToDateDr: number;
+  periodToDateCr: number;
+  yearToDateDr: number;
+  yearToDateCr: number;
   endingBalance: number;
+  debitBalance: number;
+  creditBalance: number;
 }
 
 export interface TrialBalanceReport {

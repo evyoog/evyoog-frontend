@@ -27,19 +27,19 @@ function groupByQualifier(rows: TrialBalanceRow[]) {
   return ordered;
 }
 
-// The backend response shape for this endpoint isn't fully pinned down yet
-// (see CLAUDE.md note-in-progress) — rows have shown up under `rows`,
-// `accounts`, or as a bare array. Normalize whatever comes back so the
-// rest of the page can assume a valid TrialBalanceReport.
+// The trial balance response nests rows under `lines`. Normalize whatever
+// comes back so the rest of the page can assume a valid TrialBalanceReport.
 function normalizeReport(raw: unknown): TrialBalanceReport {
   const obj = (raw ?? {}) as Record<string, unknown>;
-  const rows = Array.isArray(obj.rows)
-    ? (obj.rows as TrialBalanceRow[])
-    : Array.isArray(obj.accounts)
-      ? (obj.accounts as TrialBalanceRow[])
-      : Array.isArray(raw)
-        ? (raw as TrialBalanceRow[])
-        : [];
+  const rows = Array.isArray(obj.lines)
+    ? (obj.lines as TrialBalanceRow[])
+    : Array.isArray(obj.rows)
+      ? (obj.rows as TrialBalanceRow[])
+      : Array.isArray(obj.accounts)
+        ? (obj.accounts as TrialBalanceRow[])
+        : Array.isArray(raw)
+          ? (raw as TrialBalanceRow[])
+          : [];
   return {
     rows,
     totalDebit: typeof obj.totalDebit === 'number' ? obj.totalDebit : 0,
@@ -50,23 +50,23 @@ function normalizeReport(raw: unknown): TrialBalanceReport {
 
 function exportCsv(report: TrialBalanceReport) {
   const header = [
-    'Account',
-    'Name',
+    'Account Code',
+    'Account Name',
     'Qualifier',
     'Period DR',
     'Period CR',
     'YTD DR',
     'YTD CR',
-    'Balance',
+    'Ending Balance',
   ];
   const rows = report.rows.map((r) => [
     r.accountCode,
     r.accountName,
     r.accountQualifier,
-    r.periodDebit,
-    r.periodCredit,
-    r.ytdDebit,
-    r.ytdCredit,
+    r.periodToDateDr,
+    r.periodToDateCr,
+    r.yearToDateDr,
+    r.yearToDateCr,
     r.endingBalance,
   ]);
   const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
@@ -180,26 +180,32 @@ export default function TrialBalancePage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
-                  <th className="py-2 pr-2 font-medium">Account</th>
-                  <th className="py-2 pr-2 font-medium">Name</th>
+                  <th className="py-2 pr-2 font-medium">Account Code</th>
+                  <th className="py-2 pr-2 font-medium">Account Name</th>
                   <th className="py-2 pr-2 text-right font-medium">Period DR</th>
                   <th className="py-2 pr-2 text-right font-medium">Period CR</th>
                   <th className="py-2 pr-2 text-right font-medium">YTD DR</th>
                   <th className="py-2 pr-2 text-right font-medium">YTD CR</th>
-                  <th className="py-2 pr-2 text-right font-medium">Balance</th>
+                  <th className="py-2 pr-2 text-right font-medium">Ending Balance</th>
                 </tr>
               </thead>
               <tbody>
                 {groups.map(([qualifier, rows]) => {
                   const subtotal = rows.reduce(
                     (acc, r) => ({
-                      periodDebit: acc.periodDebit + r.periodDebit,
-                      periodCredit: acc.periodCredit + r.periodCredit,
-                      ytdDebit: acc.ytdDebit + r.ytdDebit,
-                      ytdCredit: acc.ytdCredit + r.ytdCredit,
+                      periodToDateDr: acc.periodToDateDr + r.periodToDateDr,
+                      periodToDateCr: acc.periodToDateCr + r.periodToDateCr,
+                      yearToDateDr: acc.yearToDateDr + r.yearToDateDr,
+                      yearToDateCr: acc.yearToDateCr + r.yearToDateCr,
                       endingBalance: acc.endingBalance + r.endingBalance,
                     }),
-                    { periodDebit: 0, periodCredit: 0, ytdDebit: 0, ytdCredit: 0, endingBalance: 0 },
+                    {
+                      periodToDateDr: 0,
+                      periodToDateCr: 0,
+                      yearToDateDr: 0,
+                      yearToDateCr: 0,
+                      endingBalance: 0,
+                    },
                   );
                   return (
                     <Fragment key={qualifier}>
@@ -216,16 +222,16 @@ export default function TrialBalancePage() {
                           <td className="py-2 pr-2 font-mono text-navy">{row.accountCode}</td>
                           <td className="py-2 pr-2">{row.accountName}</td>
                           <td className="py-2 pr-2 text-right font-mono">
-                            {formatINR(row.periodDebit)}
+                            {formatINR(row.periodToDateDr)}
                           </td>
                           <td className="py-2 pr-2 text-right font-mono">
-                            {formatINR(row.periodCredit)}
+                            {formatINR(row.periodToDateCr)}
                           </td>
                           <td className="py-2 pr-2 text-right font-mono">
-                            {formatINR(row.ytdDebit)}
+                            {formatINR(row.yearToDateDr)}
                           </td>
                           <td className="py-2 pr-2 text-right font-mono">
-                            {formatINR(row.ytdCredit)}
+                            {formatINR(row.yearToDateCr)}
                           </td>
                           <td
                             className={`py-2 pr-2 text-right font-mono ${row.endingBalance < 0 ? 'text-red-600' : 'text-green'}`}
@@ -239,16 +245,16 @@ export default function TrialBalancePage() {
                           Subtotal — {qualifier}
                         </td>
                         <td className="py-2 pr-2 text-right font-mono">
-                          {formatINR(subtotal.periodDebit)}
+                          {formatINR(subtotal.periodToDateDr)}
                         </td>
                         <td className="py-2 pr-2 text-right font-mono">
-                          {formatINR(subtotal.periodCredit)}
+                          {formatINR(subtotal.periodToDateCr)}
                         </td>
                         <td className="py-2 pr-2 text-right font-mono">
-                          {formatINR(subtotal.ytdDebit)}
+                          {formatINR(subtotal.yearToDateDr)}
                         </td>
                         <td className="py-2 pr-2 text-right font-mono">
-                          {formatINR(subtotal.ytdCredit)}
+                          {formatINR(subtotal.yearToDateCr)}
                         </td>
                         <td
                           className={`py-2 pr-2 text-right font-mono ${subtotal.endingBalance < 0 ? 'text-red-600' : 'text-green'}`}
