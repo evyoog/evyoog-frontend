@@ -57,6 +57,7 @@ export interface Journal {
 
 export interface JournalLine {
   lineNumber: number;
+  naturalAccountValueId: string;
   accountCombination: Record<string, string>;
   description: string;
   debitAmount: number | null;
@@ -66,10 +67,29 @@ export interface JournalLine {
 export interface CreateJournalRequest {
   legalEntityId: string;
   description: string;
-  accountingDate: string;
-  source: string;
+  glDate: string;
+  journalSourceId: string;
+  journalCategoryId: string;
   submitForApproval: boolean;
   lines: JournalLine[];
+}
+
+export interface JournalSource {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface JournalCategory {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ChartOfAccount {
+  id: string;
+  code: string;
+  name: string;
 }
 
 export interface TrialBalanceRow {

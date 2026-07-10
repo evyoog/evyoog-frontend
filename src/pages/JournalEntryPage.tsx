@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
@@ -6,11 +6,28 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useAuth } from '../context/AuthContext';
-import { createJournal } from '../api/gl';
+import {
+  createJournal,
+  getPeriodStatus,
+  listChartOfAccounts,
+  listJournalCategories,
+  listJournalSources,
+} from '../api/gl';
+import type { ChartOfAccount, JournalCategory, JournalSource } from '../types';
 import { formatINR } from '../utils/format';
+
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function openPeriodStartDate(periodName: string): string | null {
+  const [monAbbr, year] = periodName.split('-');
+  const monthIndex = MONTHS.indexOf(monAbbr?.toUpperCase());
+  if (monthIndex === -1 || !year) return null;
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+}
 
 interface DraftLine {
   key: string;
+  naturalAccountValueId: string;
   accountCode: string;
   description: string;
   debit: string;
@@ -18,7 +35,14 @@ interface DraftLine {
 }
 
 function newLine(): DraftLine {
-  return { key: crypto.randomUUID(), accountCode: '', description: '', debit: '', credit: '' };
+  return {
+    key: crypto.randomUUID(),
+    naturalAccountValueId: '',
+    accountCode: '',
+    description: '',
+    debit: '',
+    credit: '',
+  };
 }
 
 export default function JournalEntryPage() {
@@ -26,18 +50,65 @@ export default function JournalEntryPage() {
   const navigate = useNavigate();
 
   const [description, setDescription] = useState('');
-  const [accountingDate, setAccountingDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [glDate, setGlDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<DraftLine[]>([newLine(), newLine()]);
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const [sources, setSources] = useState<JournalSource[]>([]);
+  const [journalSourceId, setJournalSourceId] = useState('');
+  const [categories, setCategories] = useState<JournalCategory[]>([]);
+  const [journalCategoryId, setJournalCategoryId] = useState('');
+  const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
+  const [loadingLookups, setLoadingLookups] = useState(true);
+
   const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
   const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
   const isBalanced = totalDebit > 0 && totalDebit === totalCredit;
+  const linesReady = lines.every((l) => l.naturalAccountValueId);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    Promise.all([
+      listJournalSources(),
+      listJournalCategories(),
+      listChartOfAccounts(user.legalEntityId),
+      getPeriodStatus(user.legalEntityId),
+    ])
+      .then(([sourceList, categoryList, accountList, periods]) => {
+        if (cancelled) return;
+        setSources(sourceList);
+        setCategories(categoryList);
+        setAccounts(accountList);
+        if (sourceList.length === 1) setJournalSourceId(sourceList[0].id);
+        if (categoryList.length === 1) setJournalCategoryId(categoryList[0].id);
+        const open = periods.find((p) => p.status === 'OPEN');
+        const startDate = open ? openPeriodStartDate(open.periodName) : null;
+        if (startDate) setGlDate(startDate);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Failed to load journal sources, categories, or accounts.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLookups(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const updateLine = (key: string, patch: Partial<DraftLine>) => {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  };
+
+  const selectAccount = (key: string, accountId: string) => {
+    const account = accounts.find((a) => a.id === accountId);
+    updateLine(key, {
+      naturalAccountValueId: accountId,
+      accountCode: account?.code ?? '',
+    });
   };
 
   const addLine = () => setLines((prev) => [...prev, newLine()]);
@@ -56,11 +127,13 @@ export default function JournalEntryPage() {
       const journal = await createJournal({
         legalEntityId: user.legalEntityId,
         description,
-        accountingDate,
-        source: 'MANUAL',
+        glDate,
+        journalSourceId,
+        journalCategoryId,
         submitForApproval,
         lines: lines.map((l, idx) => ({
           lineNumber: idx + 1,
+          naturalAccountValueId: l.naturalAccountValueId,
           accountCombination: { account: l.accountCode },
           description: l.description,
           debitAmount: l.debit ? parseFloat(l.debit) : null,
@@ -92,14 +165,39 @@ export default function JournalEntryPage() {
             />
           </div>
           <Input
-            id="accountingDate"
-            label="Accounting Date"
+            id="glDate"
+            label="GL Date"
             type="date"
-            value={accountingDate}
-            onChange={(e) => setAccountingDate(e.target.value)}
+            value={glDate}
+            onChange={(e) => setGlDate(e.target.value)}
           />
-          <Select id="source" label="Journal Source" defaultValue="MANUAL" disabled>
-            <option value="MANUAL">MANUAL</option>
+          <Select
+            id="source"
+            label="Journal Source"
+            value={journalSourceId}
+            onChange={(e) => setJournalSourceId(e.target.value)}
+            disabled={loadingLookups}
+          >
+            <option value="">Select a source</option>
+            {sources.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            id="category"
+            label="Journal Category"
+            value={journalCategoryId}
+            onChange={(e) => setJournalCategoryId(e.target.value)}
+            disabled={loadingLookups}
+          >
+            <option value="">Select a category</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
           </Select>
         </div>
 
@@ -110,7 +208,7 @@ export default function JournalEntryPage() {
           <thead>
             <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
               <th className="py-2 pr-2 font-medium">#</th>
-              <th className="py-2 pr-2 font-medium">Account Code</th>
+              <th className="py-2 pr-2 font-medium">Account</th>
               <th className="py-2 pr-2 font-medium">Description</th>
               <th className="py-2 pr-2 text-right font-medium">Debit</th>
               <th className="py-2 pr-2 text-right font-medium">Credit</th>
@@ -122,10 +220,18 @@ export default function JournalEntryPage() {
               <tr key={line.key} className="border-b border-border last:border-0">
                 <td className="py-2 pr-2 font-mono text-slate">{idx + 1}</td>
                 <td className="py-2 pr-2">
-                  <Input
-                    value={line.accountCode}
-                    onChange={(e) => updateLine(line.key, { accountCode: e.target.value })}
-                  />
+                  <Select
+                    value={line.naturalAccountValueId}
+                    onChange={(e) => selectAccount(line.key, e.target.value)}
+                    disabled={loadingLookups}
+                  >
+                    <option value="">Select an account</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code} — {a.name}
+                      </option>
+                    ))}
+                  </Select>
                 </td>
                 <td className="py-2 pr-2">
                   <Input
@@ -190,7 +296,7 @@ export default function JournalEntryPage() {
             <Button
               variant="secondary"
               loading={saving === 'draft'}
-              disabled={saving !== null}
+              disabled={saving !== null || !journalSourceId || !journalCategoryId || !linesReady}
               onClick={() => handleSave(false)}
             >
               Save as Draft
@@ -199,7 +305,13 @@ export default function JournalEntryPage() {
           {hasPermission('gl:journal:submit') && (
             <Button
               loading={saving === 'submit'}
-              disabled={!isBalanced || saving !== null}
+              disabled={
+                !isBalanced ||
+                saving !== null ||
+                !journalSourceId ||
+                !journalCategoryId ||
+                !linesReady
+              }
               onClick={() => handleSave(true)}
             >
               Submit for Approval
