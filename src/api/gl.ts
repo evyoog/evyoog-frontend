@@ -64,8 +64,9 @@ export async function listJournalCategories() {
 }
 
 export async function listChartOfAccounts(legalEntityId: string, ledgerId: string) {
-  const { data } = await api.get<ApiResponse<ChartOfAccount[]>>('/api/v1/gl/chart-of-accounts', {
-    params: { legalEntityId, ledgerId },
-  });
-  return data.data;
+  const { data } = await api.get<ApiResponse<ChartOfAccount[] | Page<ChartOfAccount>>>(
+    '/api/v1/gl/chart-of-accounts',
+    { params: { legalEntityId, ledgerId } },
+  );
+  return Array.isArray(data.data) ? data.data : data.data.content;
 }
