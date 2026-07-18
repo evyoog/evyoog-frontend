@@ -135,6 +135,31 @@ export interface Ledger {
   currency: string;
 }
 
+export interface PLItem {
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  periodToDateDr: number;
+  periodToDateCr: number;
+  ytdDr: number;
+  ytdCr: number;
+  netAmount: number;
+  children: PLItem[];
+}
+
+export interface PLStatementReport {
+  legalEntityName: string;
+  periodName: string;
+  fiscalYear: string;
+  revenueItems: PLItem[];
+  totalRevenue: number;
+  expenseItems: PLItem[];
+  totalExpenses: number;
+  grossProfit: number;
+  netIncome: number;
+  isProfitable: boolean;
+}
+
 export interface Page<T> {
   content: T[];
   totalElements: number;

@@ -9,6 +9,7 @@ import type {
   Ledger,
   Page,
   PeriodStatus,
+  PLStatementReport,
   TrialBalanceReport,
 } from '../types';
 
@@ -34,6 +35,14 @@ export async function createJournal(payload: CreateJournalRequest) {
 export async function getTrialBalance(legalEntityId: string, periodId: string) {
   const { data } = await api.get<ApiResponse<TrialBalanceReport>>(
     '/api/v1/gl/reports/trial-balance',
+    { params: { legalEntityId, periodId } },
+  );
+  return data.data;
+}
+
+export async function getProfitAndLoss(legalEntityId: string, periodId: string) {
+  const { data } = await api.get<ApiResponse<PLStatementReport>>(
+    '/api/v1/gl/reports/profit-and-loss',
     { params: { legalEntityId, periodId } },
   );
   return data.data;

@@ -6,7 +6,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://turbo-spork-xr5pj4xv976gfv9jj-8080.app.github.dev/api/v1/auth/me --max-time 5)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080/api/v1/auth/me --max-time 5)",
       "Bash(grep -rn \"email\\\\|password\" /workspaces/evyoog-frontend/src/context/AuthContext.tsx 2>/dev/null | head -20; echo \"---\"; find /workspaces -maxdepth 2 -iname \"*backend*\" -o -iname \"*server*\" 2>/dev/null | grep -v node_modules | head)",
-      "Read(//workspaces/**)"
+      "Read(//workspaces/**)",
+      "Bash(npx eslint *)"
     ]
   }
 }

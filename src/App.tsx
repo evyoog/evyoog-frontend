@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import JournalEntryPage from './pages/JournalEntryPage';
 import TrialBalancePage from './pages/TrialBalancePage';
+import PLStatementPage from './pages/PLStatementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,6 +42,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <TrialBalancePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pl-statement"
+            element={
+              <ProtectedRoute>
+                <PLStatementPage />
               </ProtectedRoute>
             }
           />
