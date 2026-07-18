@@ -37,3 +37,17 @@ Always access response.data.data not response.data
 - Tailwind CSS v4 (uses @theme in CSS, NOT tailwind.config.ts)
 - axios for API calls
 - react-router-dom for routing
+
+## P&L Statement API
+GET /api/v1/gl/reports/profit-and-loss?legalEntityId={id}&periodId={id}
+Response: revenueItems[], totalRevenue, expenseItems[], totalExpenses,
+grossProfit, netIncome, isProfitable
+PLItem fields: accountCode, accountName, periodToDateDr, periodToDateCr,
+ytdDr, ytdCr, netAmount, children[]
+
+## Trial Balance API  
+GET /api/v1/gl/reports/trial-balance?legalEntityId={id}&periodId={id}
+Response: lines[] (key is "lines" not "rows")
+Row fields: accountCode, accountName, accountQualifier, normalBalance,
+periodToDateDr, periodToDateCr, yearToDateDr, yearToDateCr, endingBalance,
+totalDebit, totalCredit, isBalanced (at root level)
