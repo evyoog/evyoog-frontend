@@ -7,6 +7,9 @@ import DashboardPage from './pages/DashboardPage';
 import JournalEntryPage from './pages/JournalEntryPage';
 import TrialBalancePage from './pages/TrialBalancePage';
 import PLStatementPage from './pages/PLStatementPage';
+import BalanceSheetPage from './pages/BalanceSheetPage';
+import AccountLedgerPage from './pages/AccountLedgerPage';
+import CashFlowPage from './pages/CashFlowPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +53,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <PLStatementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/balance-sheet"
+            element={
+              <ProtectedRoute>
+                <BalanceSheetPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account-ledger"
+            element={
+              <ProtectedRoute>
+                <AccountLedgerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cash-flow"
+            element={
+              <ProtectedRoute>
+                <CashFlowPage />
               </ProtectedRoute>
             }
           />

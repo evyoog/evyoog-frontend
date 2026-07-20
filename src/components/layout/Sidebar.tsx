@@ -12,6 +12,9 @@ const topNavItems: NavItem[] = [
   { label: 'Journal Entry', to: '/journals/new', permission: 'gl:journal:create' },
   { label: 'Trial Balance', to: '/trial-balance', permission: 'gl:trial-balance:view' },
   { label: 'P&L Statement', to: '/pl-statement', permission: 'gl:pl:view' },
+  { label: 'Balance Sheet', to: '/balance-sheet', permission: 'gl:balance-sheet:view' },
+  { label: 'Account Ledger', to: '/account-ledger', permission: 'gl:account-ledger:view' },
+  { label: 'Cash Flow', to: '/cash-flow', permission: 'gl:balance-sheet:view' },
 ];
 
 function NavItemLink({ item }: { item: NavItem }) {

@@ -1,6 +1,9 @@
 import api from './axios';
 import type {
+  AccountLedgerReport,
   ApiResponse,
+  BalanceSheetReport,
+  CashFlowReport,
   ChartOfAccountsResponse,
   CreateJournalRequest,
   Journal,
@@ -78,4 +81,31 @@ export async function listChartOfAccounts(legalEntityId: string, ledgerId: strin
     { params: { legalEntityId, ledgerId } },
   );
   return data.data.accounts;
+}
+
+export async function getBalanceSheet(legalEntityId: string, periodId: string) {
+  const { data } = await api.get<ApiResponse<BalanceSheetReport>>(
+    '/api/v1/gl/reports/balance-sheet',
+    { params: { legalEntityId, periodId } },
+  );
+  return data.data;
+}
+
+export async function getAccountLedger(
+  legalEntityId: string,
+  periodId: string,
+  accountId: string,
+) {
+  const { data } = await api.get<ApiResponse<AccountLedgerReport>>(
+    '/api/v1/gl/reports/account-ledger',
+    { params: { legalEntityId, periodId, accountId } },
+  );
+  return data.data;
+}
+
+export async function getCashFlow(legalEntityId: string, periodId: string) {
+  const { data } = await api.get<ApiResponse<CashFlowReport>>('/api/v1/gl/reports/cash-flow', {
+    params: { legalEntityId, periodId },
+  });
+  return data.data;
 }

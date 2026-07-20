@@ -7,7 +7,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080/api/v1/auth/me --max-time 5)",
       "Bash(grep -rn \"email\\\\|password\" /workspaces/evyoog-frontend/src/context/AuthContext.tsx 2>/dev/null | head -20; echo \"---\"; find /workspaces -maxdepth 2 -iname \"*backend*\" -o -iname \"*server*\" 2>/dev/null | grep -v node_modules | head)",
       "Read(//workspaces/**)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/api/v1/auth/me)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(command -v chromium-cli)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

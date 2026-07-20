@@ -90,6 +90,7 @@ export interface ChartOfAccount {
   id: string;
   code: string;
   name: string;
+  isPostable?: boolean;
 }
 
 export interface ChartOfAccountsResponse {
@@ -166,4 +167,94 @@ export interface Page<T> {
   totalPages: number;
   number: number;
   size: number;
+}
+
+export interface BalanceSheetItem {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  isSummary: boolean;
+  isPostable: boolean;
+  displayOrder: number;
+  periodToDateDr: number;
+  periodToDateCr: number;
+  ytdDr: number;
+  ytdCr: number;
+  endingBalance: number;
+  children: BalanceSheetItem[];
+}
+
+export interface BalanceSheetReport {
+  legalEntityId: string;
+  legalEntityName: string;
+  legalEntityCode: string;
+  accountingPeriodId: string;
+  periodName: string;
+  fiscalYear: string;
+  financeMode: string;
+  generatedAt: string;
+  assetItems: BalanceSheetItem[];
+  totalAssets: number;
+  liabilityItems: BalanceSheetItem[];
+  totalLiabilities: number;
+  equityItems: BalanceSheetItem[];
+  totalEquity: number;
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+}
+
+export interface AccountLedgerLine {
+  journalHeaderId: string;
+  journalNumber: string;
+  glDate: string;
+  description: string;
+  debitAmount: number | null;
+  creditAmount: number | null;
+  runningBalance: number;
+}
+
+export interface AccountLedgerReport {
+  legalEntityId: string;
+  legalEntityName: string;
+  accountingPeriodId: string;
+  periodName: string;
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  openingBalance: number;
+  lines: AccountLedgerLine[];
+  closingBalance: number;
+  totalDebits: number;
+  totalCredits: number;
+}
+
+export interface CashFlowLineItem {
+  description: string;
+  amount: number;
+  itemType: string;
+}
+
+export interface CashFlowSection {
+  sectionCode: string;
+  sectionName: string;
+  items: CashFlowLineItem[];
+  totalAmount: number;
+}
+
+export interface CashFlowReport {
+  legalEntityId: string;
+  legalEntityName: string;
+  accountingPeriodId: string;
+  periodName: string;
+  fiscalYear: string;
+  method: string;
+  operatingActivities: CashFlowSection;
+  investingActivities: CashFlowSection;
+  financingActivities: CashFlowSection;
+  netCashChange: number;
+  openingCashBalance: number;
+  closingCashBalance: number;
+  isPositiveCashFlow: boolean;
 }
