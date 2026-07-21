@@ -98,7 +98,7 @@ export async function getAccountLedger(
 ) {
   const { data } = await api.get<ApiResponse<AccountLedgerReport>>(
     '/api/v1/gl/reports/account-ledger',
-    { params: { legalEntityId, accountingPeriodId: periodId, accountId } },
+    { params: { legalEntityId, accountingPeriodId: periodId, naturalAccountValueId: accountId } },
   );
   return data.data;
 }
