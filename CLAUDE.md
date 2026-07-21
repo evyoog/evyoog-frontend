@@ -51,3 +51,12 @@ Response: lines[] (key is "lines" not "rows")
 Row fields: accountCode, accountName, accountQualifier, normalBalance,
 periodToDateDr, periodToDateCr, yearToDateDr, yearToDateCr, endingBalance,
 totalDebit, totalCredit, isBalanced (at root level)
+
+## Account Ledger API
+GET /api/v1/gl/reports/account-ledger
+Params: legalEntityId, accountingPeriodId (NOT periodId), naturalAccountValueId (NOT accountId)
+Response key for lines: "entries" (NOT "lines")
+Entry fields: lineId, journalHeaderId, journalNumber, glDate, accountingDate,
+  journalDescription, lineDescription, debitAmount, creditAmount, runningBalance,
+  journalSourceCode, journalCategoryCode, gstApplicable, tdsApplicable, createdAt
+Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryCount
