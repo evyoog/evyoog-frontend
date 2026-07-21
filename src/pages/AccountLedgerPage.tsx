@@ -11,10 +11,10 @@ import { formatINR } from '../utils/format';
 
 function exportCsv(report: AccountLedgerReport) {
   const header = ['Journal #', 'Date', 'Description', 'Debit', 'Credit', 'Running Balance'];
-  const rows = report.lines.map((l) => [
+  const rows = (report.entries ?? []).map((l) => [
     l.journalNumber,
     l.glDate,
-    l.description,
+    l.journalDescription,
     l.debitAmount ?? '',
     l.creditAmount ?? '',
     l.runningBalance,
@@ -168,11 +168,11 @@ export default function AccountLedgerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.lines.map((line) => (
+                  {report.entries?.map((line) => (
                     <tr key={line.journalHeaderId} className="border-b border-border">
                       <td className="py-2 pr-2 font-mono text-navy">{line.journalNumber}</td>
                       <td className="py-2 pr-2">{line.glDate}</td>
-                      <td className="py-2 pr-2">{line.description}</td>
+                      <td className="py-2 pr-2">{line.journalDescription}</td>
                       <td className="py-2 pr-2 text-right font-mono">
                         {line.debitAmount != null ? formatINR(line.debitAmount) : ''}
                       </td>

@@ -205,29 +205,40 @@ export interface BalanceSheetReport {
 }
 
 export interface AccountLedgerLine {
+  lineId: string;
   journalHeaderId: string;
   journalNumber: string;
   glDate: string;
-  description: string;
+  accountingDate: string;
+  journalDescription: string;
+  lineDescription: string | null;
+  journalSourceCode: string;
+  journalCategoryCode: string;
   debitAmount: number | null;
   creditAmount: number | null;
   runningBalance: number;
+  gstApplicable: boolean;
+  tdsApplicable: boolean;
+  createdAt: string;
 }
 
 export interface AccountLedgerReport {
+  naturalAccountValueId: string;
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  normalBalance: string;
   legalEntityId: string;
   legalEntityName: string;
   accountingPeriodId: string;
   periodName: string;
-  accountId: string;
-  accountCode: string;
-  accountName: string;
-  accountQualifier: string;
+  fiscalYear: string;
   openingBalance: number;
-  lines: AccountLedgerLine[];
-  closingBalance: number;
+  entries: AccountLedgerLine[];
   totalDebits: number;
   totalCredits: number;
+  closingBalance: number;
+  entryCount: number;
 }
 
 export interface CashFlowLineItem {
