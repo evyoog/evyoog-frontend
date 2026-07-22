@@ -131,9 +131,21 @@ export interface TrialBalanceReport {
 export type PeriodStatusValue = 'NOT_OPENED' | 'FUTURE_ENTERABLE' | 'OPEN' | 'CLOSED' | 'LOCKED';
 
 export interface PeriodStatus {
+  id: string;
+  legalEntityId: string;
+  legalEntityName: string;
   accountingPeriodId: string;
   periodName: string;
+  fiscalYear: string;
   status: PeriodStatusValue;
+  openedAt: string | null;
+  openedBy: string | null;
+  closedAt: string | null;
+  closedBy: string | null;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Ledger {

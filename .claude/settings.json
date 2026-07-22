@@ -15,7 +15,9 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173 --max-time 2)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8080/api/v1/auth/me --max-time 2)",
       "Bash(chromium-cli --help)",
-      "Bash(curl -s http://localhost:5173/src/pages/JournalListingPage.tsx -o /tmp/jlp_transform.txt -w \"HTTP %{http_code}\\\\n\")"
+      "Bash(curl -s http://localhost:5173/src/pages/JournalListingPage.tsx -o /tmp/jlp_transform.txt -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/src/pages/PeriodManagementPage.tsx)",
+      "Bash(curl -s http://localhost:5173/src/pages/PeriodManagementPage.tsx)"
     ]
   }
 }

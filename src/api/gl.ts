@@ -61,6 +61,30 @@ export async function getPeriodStatus(legalEntityId: string) {
   return data.data;
 }
 
+export async function openPeriod(periodStatusId: string, actionBy: string) {
+  const { data } = await api.post<ApiResponse<PeriodStatus>>(
+    `/api/v1/gl/period-status/${periodStatusId}/open`,
+    { actionBy },
+  );
+  return data.data;
+}
+
+export async function closePeriod(periodStatusId: string, actionBy: string) {
+  const { data } = await api.post<ApiResponse<PeriodStatus>>(
+    `/api/v1/gl/period-status/${periodStatusId}/close`,
+    { actionBy },
+  );
+  return data.data;
+}
+
+export async function lockPeriod(periodStatusId: string, actionBy: string) {
+  const { data } = await api.post<ApiResponse<PeriodStatus>>(
+    `/api/v1/gl/period-status/${periodStatusId}/lock`,
+    { actionBy },
+  );
+  return data.data;
+}
+
 export async function listLedgers(legalEntityId: string) {
   const { data } = await api.get<ApiResponse<Ledger[]>>('/api/v1/gl/ledgers', {
     params: { legalEntityId },

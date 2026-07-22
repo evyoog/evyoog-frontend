@@ -11,6 +11,7 @@ import PLStatementPage from './pages/PLStatementPage';
 import BalanceSheetPage from './pages/BalanceSheetPage';
 import AccountLedgerPage from './pages/AccountLedgerPage';
 import CashFlowPage from './pages/CashFlowPage';
+import PeriodManagementPage from './pages/PeriodManagementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -86,6 +87,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <CashFlowPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/period-management"
+            element={
+              <ProtectedRoute>
+                <PeriodManagementPage />
               </ProtectedRoute>
             }
           />
