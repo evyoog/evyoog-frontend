@@ -46,13 +46,19 @@ export type JournalStatus =
 export interface Journal {
   id: string;
   journalNumber: string;
-  status: JournalStatus;
+  legalEntityName: string;
+  ledgerName: string;
+  periodName: string;
+  journalSourceCode: string;
+  journalCategoryCode: string;
   description: string;
-  accountingDate: string;
+  glDate: string;
   totalDebit: number;
   totalCredit: number;
+  status: JournalStatus;
+  financeModeSnapshot: string;
+  postedAt: string | null;
   createdAt: string;
-  createdBy: string;
 }
 
 export interface JournalLine {
@@ -167,6 +173,7 @@ export interface Page<T> {
   totalPages: number;
   number: number;
   size: number;
+  last: boolean;
 }
 
 export interface BalanceSheetItem {

@@ -5,6 +5,7 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import JournalEntryPage from './pages/JournalEntryPage';
+import JournalListingPage from './pages/JournalListingPage';
 import TrialBalancePage from './pages/TrialBalancePage';
 import PLStatementPage from './pages/PLStatementPage';
 import BalanceSheetPage from './pages/BalanceSheetPage';
@@ -37,6 +38,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <JournalEntryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/journals"
+            element={
+              <ProtectedRoute>
+                <JournalListingPage />
               </ProtectedRoute>
             }
           />

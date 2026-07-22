@@ -10,6 +10,7 @@ interface NavItem {
 const topNavItems: NavItem[] = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Journal Entry', to: '/journals/new', permission: 'gl:journal:create' },
+  { label: 'Journal Listing', to: '/journals', permission: 'gl:journal:view' },
   { label: 'Trial Balance', to: '/trial-balance', permission: 'gl:trial-balance:view' },
   { label: 'P&L Statement', to: '/pl-statement', permission: 'gl:pl:view' },
   { label: 'Balance Sheet', to: '/balance-sheet', permission: 'gl:balance-sheet:view' },

@@ -117,7 +117,7 @@ export default function DashboardPage() {
                     <tr key={j.id} className="border-b border-border last:border-0">
                       <td className="py-2 pr-4 font-mono text-navy">{j.journalNumber}</td>
                       <td className="py-2 pr-4">{j.description}</td>
-                      <td className="py-2 pr-4">{j.accountingDate}</td>
+                      <td className="py-2 pr-4">{j.glDate}</td>
                       <td className="py-2 pr-4 text-right font-mono">{formatINR(j.totalDebit)}</td>
                       <td className="py-2 pr-4 text-right font-mono">{formatINR(j.totalCredit)}</td>
                       <td className="py-2 pr-4">

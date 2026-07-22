@@ -1,0 +1,207 @@
+import { useEffect, useState } from 'react';
+import AppLayout from '../components/layout/AppLayout';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Select from '../components/ui/Select';
+import Badge from '../components/ui/Badge';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
+import { listJournals, getPeriodStatus } from '../api/gl';
+import type { Journal, JournalStatus, PeriodStatus } from '../types';
+import { formatINR } from '../utils/format';
+
+const PAGE_SIZE = 20;
+const STATUS_OPTIONS: (JournalStatus | 'ALL')[] = [
+  'ALL',
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'POSTED',
+  'REVERSED',
+];
+
+export default function JournalListingPage() {
+  const { user } = useAuth();
+  const [periods, setPeriods] = useState<PeriodStatus[]>([]);
+  const [periodFilter, setPeriodFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [appliedPeriod, setAppliedPeriod] = useState('');
+  const [appliedStatus, setAppliedStatus] = useState('ALL');
+  const [page, setPage] = useState(0);
+  const [journals, setJournals] = useState<Journal[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [last, setLast] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!user) return;
+    getPeriodStatus(user.legalEntityId)
+      .then((data) => setPeriods(data))
+      .catch(() => {
+        /* period dropdown is a non-critical filter */
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError('');
+      try {
+        const result = await listJournals({
+          legalEntityId: user!.legalEntityId,
+          page,
+          size: PAGE_SIZE,
+          status: appliedStatus !== 'ALL' ? appliedStatus : undefined,
+          periodId: appliedPeriod || undefined,
+        });
+        if (cancelled) return;
+        setJournals(Array.isArray(result?.content) ? result.content : []);
+        setTotalPages(result?.totalPages ?? 0);
+        setTotalElements(result?.totalElements ?? 0);
+        setLast(result?.last ?? true);
+      } catch {
+        if (!cancelled) setError('Failed to load journals. Please try again.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, page, appliedStatus, appliedPeriod]);
+
+  const handleSearch = () => {
+    setPage(0);
+    setAppliedPeriod(periodFilter);
+    setAppliedStatus(statusFilter);
+  };
+
+  const handleClear = () => {
+    setPeriodFilter('');
+    setStatusFilter('ALL');
+    setAppliedPeriod('');
+    setAppliedStatus('ALL');
+    setPage(0);
+  };
+
+  return (
+    <AppLayout breadcrumb="Journal Listing">
+      <h1 className="text-2xl font-bold text-navy">Journal Listing</h1>
+      <p className="mt-1 text-sm text-slate">All journal entries for the current legal entity</p>
+
+      <Card className="mt-6">
+        <div className="flex items-end gap-3">
+          <div className="w-64">
+            <Select
+              id="period-filter"
+              label="Period"
+              value={periodFilter}
+              onChange={(e) => setPeriodFilter(e.target.value)}
+            >
+              <option value="">All periods</option>
+              {periods.map((p) => (
+                <option key={p.accountingPeriodId} value={p.accountingPeriodId}>
+                  {p.periodName}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="w-56">
+            <Select
+              id="status-filter"
+              label="Status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s === 'ALL' ? 'All statuses' : s.replace('_', ' ')}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button onClick={handleSearch}>Search</Button>
+          <Button variant="secondary" onClick={handleClear}>
+            Clear
+          </Button>
+        </div>
+
+        <div className="mt-6">
+          {loading && <LoadingSpinner />}
+
+          {!loading && error && <p className="py-10 text-center text-sm text-red-600">{error}</p>}
+
+          {!loading && !error && journals.length === 0 && (
+            <p className="py-10 text-center text-sm text-slate">
+              No journals found. Try adjusting your filters.
+            </p>
+          )}
+
+          {!loading && !error && journals.length > 0 && (
+            <>
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
+                    <th className="py-2 pr-2 font-medium">Journal #</th>
+                    <th className="py-2 pr-2 font-medium">Date</th>
+                    <th className="py-2 pr-2 font-medium">Period</th>
+                    <th className="py-2 pr-2 font-medium">Description</th>
+                    <th className="py-2 pr-2 font-medium">Source</th>
+                    <th className="py-2 pr-2 text-right font-medium">Debit</th>
+                    <th className="py-2 pr-2 text-right font-medium">Credit</th>
+                    <th className="py-2 pr-2 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {journals.map((j) => (
+                    <tr key={j.id} className="border-b border-border last:border-0 hover:bg-offwhite">
+                      <td className="py-2 pr-2 font-mono text-navy">{j.journalNumber}</td>
+                      <td className="py-2 pr-2">{j.glDate}</td>
+                      <td className="py-2 pr-2">{j.periodName}</td>
+                      <td className="py-2 pr-2">{j.description}</td>
+                      <td className="py-2 pr-2">{j.journalSourceCode}</td>
+                      <td className="py-2 pr-2 text-right font-mono">{formatINR(j.totalDebit)}</td>
+                      <td className="py-2 pr-2 text-right font-mono">{formatINR(j.totalCredit)}</td>
+                      <td className="py-2 pr-2">
+                        <Badge status={j.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-slate">{totalElements} journal(s) found</p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-slate">
+                    Page {totalPages === 0 ? 0 : page + 1} of {totalPages}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={last}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </Card>
+    </AppLayout>
+  );
+}

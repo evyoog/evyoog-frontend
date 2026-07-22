@@ -19,11 +19,14 @@ import type {
 export interface JournalListParams {
   legalEntityId: string;
   status?: string;
+  periodId?: string;
   page?: number;
   size?: number;
 }
 
-export async function listJournals(params: JournalListParams) {
+export async function listJournals({ periodId, ...rest }: JournalListParams) {
+  const params: Record<string, string | number> = { ...rest };
+  if (periodId) params.accountingPeriodId = periodId;
   const { data } = await api.get<ApiResponse<Page<Journal>>>('/api/v1/gl/journals', {
     params,
   });
