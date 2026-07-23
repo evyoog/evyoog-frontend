@@ -10,7 +10,6 @@ export interface User {
   email: string;
   fullName: string;
   legalEntityId: string;
-  legalEntityName?: string;
   permissions: string[];
   mustChangePwd: boolean;
 }
@@ -32,7 +31,6 @@ export interface MeResponse {
   email: string;
   fullName: string;
   legalEntityId: string;
-  legalEntityName?: string;
   roles: string[];
   permissions: string[];
 }

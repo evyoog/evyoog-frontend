@@ -13,6 +13,7 @@ export default function TopBar({ breadcrumb }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null | undefined>(undefined);
+  const [legalEntityName, setLegalEntityName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -21,6 +22,7 @@ export default function TopBar({ breadcrumb }: TopBarProps) {
       .then((periods) => {
         if (cancelled) return;
         setOpenPeriod(periods.find((p) => p.status === 'OPEN') ?? null);
+        setLegalEntityName(periods[0]?.legalEntityName ?? null);
       })
       .catch(() => {
         if (!cancelled) setOpenPeriod(null);
@@ -51,9 +53,7 @@ export default function TopBar({ breadcrumb }: TopBarProps) {
           ))}
         <div className="text-right leading-tight">
           <p className="text-sm text-navy">{user?.fullName}</p>
-          {user?.legalEntityName && (
-            <p className="text-xs text-slate">{user.legalEntityName}</p>
-          )}
+          {legalEntityName && <p className="text-xs text-slate">{legalEntityName}</p>}
         </div>
         <Button variant="secondary" onClick={handleLogout}>
           Logout

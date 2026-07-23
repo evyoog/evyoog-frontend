@@ -44,16 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     persistUser(userData);
     setUser(userData);
-
-    // Best-effort enrichment — legalEntityName isn't in the login response.
-    try {
-      const me = await authApi.getMe();
-      const enriched: User = { ...userData, legalEntityName: me.legalEntityName };
-      persistUser(enriched);
-      setUser(enriched);
-    } catch {
-      // Non-critical — TopBar falls back gracefully without the LE name.
-    }
   };
 
   const logout = () => {
