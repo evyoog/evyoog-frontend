@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getTrialBalance, getPeriodStatus } from '../api/gl';
 import type { PeriodStatus, TrialBalanceReport, TrialBalanceRow } from '../types';
 import { formatINR } from '../utils/format';
@@ -81,12 +82,12 @@ function exportCsv(report: TrialBalanceReport) {
 
 export default function TrialBalancePage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [report, setReport] = useState<TrialBalanceReport | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState(true);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -98,9 +99,8 @@ export default function TrialBalancePage() {
         const open = data.find((p) => p.status === 'OPEN');
         if (open) setPeriodId(open.accountingPeriodId);
       })
-      .catch((err) => {
-        console.error('Failed to load periods:', err);
-        if (!cancelled) setError('Failed to load periods.');
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load periods.', 'error');
       })
       .finally(() => {
         if (!cancelled) setLoadingPeriods(false);
@@ -113,12 +113,11 @@ export default function TrialBalancePage() {
   const runReport = async () => {
     if (!user || !periodId) return;
     setRunning(true);
-    setError('');
     try {
       const data = await getTrialBalance(user.legalEntityId, periodId);
       setReport(normalizeReport(data));
     } catch {
-      setError('Failed to load trial balance. Please try again.');
+      showToast('Failed to load trial balance. Please try again.', 'error');
     } finally {
       setRunning(false);
     }
@@ -159,12 +158,10 @@ export default function TrialBalancePage() {
           )}
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
         <div className="mt-6">
           {running && <LoadingSpinner />}
 
-          {!running && !report && !error && (
+          {!running && !report && (
             <p className="py-10 text-center text-sm text-slate">
               Select a period and click Run Report to view the trial balance.
             </p>

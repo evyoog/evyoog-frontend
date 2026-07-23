@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getPeriodStatus } from '../../api/gl';
+import type { PeriodStatus } from '../../types';
 import Button from '../ui/Button';
 
 interface TopBarProps {
@@ -9,6 +12,23 @@ interface TopBarProps {
 export default function TopBar({ breadcrumb }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    getPeriodStatus(user.legalEntityId)
+      .then((periods) => {
+        if (cancelled) return;
+        setOpenPeriod(periods.find((p) => p.status === 'OPEN') ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setOpenPeriod(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -19,7 +39,22 @@ export default function TopBar({ breadcrumb }: TopBarProps) {
     <header className="flex h-16 items-center justify-between border-b border-border bg-white px-6">
       <span className="text-sm font-medium text-slate">{breadcrumb}</span>
       <div className="flex items-center gap-4">
-        <span className="text-sm text-navy">{user?.fullName}</span>
+        {openPeriod !== undefined &&
+          (openPeriod ? (
+            <span className="inline-flex items-center rounded-full bg-green-light px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide text-green">
+              {openPeriod.periodName} (Open)
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full bg-amber-light px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide text-amber">
+              No Open Period
+            </span>
+          ))}
+        <div className="text-right leading-tight">
+          <p className="text-sm text-navy">{user?.fullName}</p>
+          {user?.legalEntityName && (
+            <p className="text-xs text-slate">{user.legalEntityName}</p>
+          )}
+        </div>
         <Button variant="secondary" onClick={handleLogout}>
           Logout
         </Button>

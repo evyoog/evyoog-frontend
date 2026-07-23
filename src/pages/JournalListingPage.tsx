@@ -6,9 +6,10 @@ import Select from '../components/ui/Select';
 import Badge from '../components/ui/Badge';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { listJournals, getPeriodStatus } from '../api/gl';
 import type { Journal, JournalStatus, PeriodStatus } from '../types';
-import { formatINR } from '../utils/format';
+import { formatINR, formatDate } from '../utils/format';
 
 const PAGE_SIZE = 20;
 const STATUS_OPTIONS: (JournalStatus | 'ALL')[] = [
@@ -21,6 +22,7 @@ const STATUS_OPTIONS: (JournalStatus | 'ALL')[] = [
 
 export default function JournalListingPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodFilter, setPeriodFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -32,7 +34,6 @@ export default function JournalListingPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [last, setLast] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -49,7 +50,6 @@ export default function JournalListingPage() {
 
     async function load() {
       setLoading(true);
-      setError('');
       try {
         const result = await listJournals({
           legalEntityId: user!.legalEntityId,
@@ -64,7 +64,7 @@ export default function JournalListingPage() {
         setTotalElements(result?.totalElements ?? 0);
         setLast(result?.last ?? true);
       } catch {
-        if (!cancelled) setError('Failed to load journals. Please try again.');
+        if (!cancelled) showToast('Failed to load journals. Please try again.', 'error');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -135,15 +135,13 @@ export default function JournalListingPage() {
         <div className="mt-6">
           {loading && <LoadingSpinner />}
 
-          {!loading && error && <p className="py-10 text-center text-sm text-red-600">{error}</p>}
-
-          {!loading && !error && journals.length === 0 && (
+          {!loading && journals.length === 0 && (
             <p className="py-10 text-center text-sm text-slate">
               No journals found. Try adjusting your filters.
             </p>
           )}
 
-          {!loading && !error && journals.length > 0 && (
+          {!loading && journals.length > 0 && (
             <>
               <table className="w-full text-left text-sm">
                 <thead>
@@ -162,7 +160,7 @@ export default function JournalListingPage() {
                   {journals.map((j) => (
                     <tr key={j.id} className="border-b border-border last:border-0 hover:bg-offwhite">
                       <td className="py-2 pr-2 font-mono text-navy">{j.journalNumber}</td>
-                      <td className="py-2 pr-2">{j.glDate}</td>
+                      <td className="py-2 pr-2">{formatDate(j.glDate)}</td>
                       <td className="py-2 pr-2">{j.periodName}</td>
                       <td className="py-2 pr-2">{j.description}</td>
                       <td className="py-2 pr-2">{j.journalSourceCode}</td>

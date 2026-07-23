@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   createJournal,
   getPeriodStatus,
@@ -48,14 +49,13 @@ function newLine(): DraftLine {
 
 export default function JournalEntryPage() {
   const { user, hasPermission } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [description, setDescription] = useState('');
   const [glDate, setGlDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [lines, setLines] = useState<DraftLine[]>([newLine(), newLine()]);
   const [saving, setSaving] = useState<'draft' | 'submit' | null>(null);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [sources, setSources] = useState<JournalSource[]>([]);
   const [journalSourceId, setJournalSourceId] = useState('');
@@ -95,7 +95,7 @@ export default function JournalEntryPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Failed to load journal sources, categories, or accounts.');
+        if (!cancelled) showToast('Failed to load journal sources, categories, or accounts.', 'error');
       })
       .finally(() => {
         if (!cancelled) setLoadingLookups(false);
@@ -126,8 +126,6 @@ export default function JournalEntryPage() {
 
   const handleSave = async (submitForApproval: boolean) => {
     if (!user) return;
-    setError('');
-    setSuccess('');
     setSaving(submitForApproval ? 'submit' : 'draft');
     try {
       const journal = await createJournal({
@@ -146,10 +144,10 @@ export default function JournalEntryPage() {
           creditAmount: l.credit ? parseFloat(l.credit) : null,
         })),
       });
-      setSuccess(`Journal ${journal.journalNumber} saved successfully.`);
+      showToast(`Journal ${journal.journalNumber} saved successfully.`, 'success');
       setTimeout(() => navigate('/dashboard'), 1200);
     } catch {
-      setError('Failed to save journal. Please check the entries and try again.');
+      showToast('Failed to save journal. Please check the entries and try again.', 'error');
     } finally {
       setSaving(null);
     }
@@ -293,9 +291,6 @@ export default function JournalEntryPage() {
             {isBalanced ? '✓ Balanced' : '✗ Unbalanced'}
           </span>
         </div>
-
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-        {success && <p className="mt-4 text-sm text-green">{success}</p>}
 
         <div className="mt-6 flex gap-3">
           {hasPermission('gl:journal:create') && (

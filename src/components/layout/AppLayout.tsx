@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import SessionTimeoutWarning from '../SessionTimeoutWarning';
 
 interface AppLayoutProps {
   breadcrumb: string;
@@ -17,6 +18,7 @@ export default function AppLayout({ breadcrumb, children }: AppLayoutProps) {
           <div className="mx-auto max-w-[1200px]">{children}</div>
         </main>
       </div>
+      <SessionTimeoutWarning />
     </div>
   );
 }

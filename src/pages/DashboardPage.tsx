@@ -6,16 +6,17 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { listJournals, getPeriodStatus } from '../api/gl';
 import type { Journal, PeriodStatus } from '../types';
-import { formatINR } from '../utils/format';
+import { formatINR, formatDate } from '../utils/format';
 
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
+  const { showToast } = useToast();
   const [journals, setJournals] = useState<Journal[]>([]);
   const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -23,7 +24,6 @@ export default function DashboardPage() {
 
     async function load() {
       setLoading(true);
-      setError('');
       try {
         const [journalPage, periods] = await Promise.all([
           listJournals({ legalEntityId: user!.legalEntityId, page: 0, size: 100 }),
@@ -33,7 +33,7 @@ export default function DashboardPage() {
         setJournals(journalPage.content);
         setOpenPeriod(periods.find((p) => p.status === 'OPEN') ?? null);
       } catch {
-        if (!cancelled) setError('Failed to load dashboard data. Please try again.');
+        if (!cancelled) showToast('Failed to load dashboard data. Please try again.', 'error');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -61,9 +61,8 @@ export default function DashboardPage() {
       <p className="mt-1 text-sm text-slate">{user?.legalEntityId}</p>
 
       {loading && <LoadingSpinner />}
-      {!loading && error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
-      {!loading && !error && (
+      {!loading && (
         <>
           <div className="mt-6 grid grid-cols-4 gap-4">
             {hasPermission('gl:journal:approve') && (
@@ -117,7 +116,7 @@ export default function DashboardPage() {
                     <tr key={j.id} className="border-b border-border last:border-0">
                       <td className="py-2 pr-4 font-mono text-navy">{j.journalNumber}</td>
                       <td className="py-2 pr-4">{j.description}</td>
-                      <td className="py-2 pr-4">{j.glDate}</td>
+                      <td className="py-2 pr-4">{formatDate(j.glDate)}</td>
                       <td className="py-2 pr-4 text-right font-mono">{formatINR(j.totalDebit)}</td>
                       <td className="py-2 pr-4 text-right font-mono">{formatINR(j.totalCredit)}</td>
                       <td className="py-2 pr-4">

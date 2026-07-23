@@ -5,9 +5,10 @@ import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getAccountLedger, getPeriodStatus, listChartOfAccounts, listLedgers } from '../api/gl';
 import type { AccountLedgerReport, ChartOfAccount, PeriodStatus } from '../types';
-import { formatINR } from '../utils/format';
+import { formatINR, formatDate } from '../utils/format';
 
 function exportCsv(report: AccountLedgerReport) {
   const header = ['Journal #', 'Date', 'Description', 'Debit', 'Credit', 'Running Balance'];
@@ -31,6 +32,7 @@ function exportCsv(report: AccountLedgerReport) {
 
 export default function AccountLedgerPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -38,7 +40,6 @@ export default function AccountLedgerPage() {
   const [report, setReport] = useState<AccountLedgerReport | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [running, setRunning] = useState(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -63,9 +64,8 @@ export default function AccountLedgerPage() {
           // exclude accounts explicitly marked non-postable.
           setAccounts(accountList.filter((a) => a.isPostable !== false));
         }
-      } catch (err) {
-        console.error('Failed to load options:', err);
-        if (!cancelled) setError('Failed to load periods or accounts.');
+      } catch {
+        if (!cancelled) showToast('Failed to load periods or accounts.', 'error');
       } finally {
         if (!cancelled) setLoadingOptions(false);
       }
@@ -80,12 +80,11 @@ export default function AccountLedgerPage() {
   const runReport = async () => {
     if (!user || !periodId || !accountId) return;
     setRunning(true);
-    setError('');
     try {
       const data = await getAccountLedger(user.legalEntityId, periodId, accountId);
       setReport(data);
     } catch {
-      setError('Failed to load account ledger. Please try again.');
+      showToast('Failed to load account ledger. Please try again.', 'error');
     } finally {
       setRunning(false);
     }
@@ -140,12 +139,10 @@ export default function AccountLedgerPage() {
           )}
         </div>
 
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
         <div className="mt-6">
           {running && <LoadingSpinner />}
 
-          {!running && !report && !error && (
+          {!running && !report && (
             <p className="py-10 text-center text-sm text-slate">
               Select a period and account, then click Run Report to view the ledger.
             </p>
@@ -171,7 +168,7 @@ export default function AccountLedgerPage() {
                   {report.entries?.map((line) => (
                     <tr key={line.journalHeaderId} className="border-b border-border">
                       <td className="py-2 pr-2 font-mono text-navy">{line.journalNumber}</td>
-                      <td className="py-2 pr-2">{line.glDate}</td>
+                      <td className="py-2 pr-2">{formatDate(line.glDate)}</td>
                       <td className="py-2 pr-2">{line.journalDescription}</td>
                       <td className="py-2 pr-2 text-right font-mono">
                         {line.debitAmount != null ? formatINR(line.debitAmount) : ''}

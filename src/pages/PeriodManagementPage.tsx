@@ -4,6 +4,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { getPeriodStatus, openPeriod, closePeriod, lockPeriod } from '../api/gl';
 import type { PeriodStatus, PeriodStatusValue } from '../types';
 
@@ -38,9 +39,9 @@ const ACTION_FN = { open: openPeriod, close: closePeriod, lock: lockPeriod };
 
 export default function PeriodManagementPage() {
   const { user, hasPermission } = useAuth();
+  const { showToast } = useToast();
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
 
@@ -49,12 +50,11 @@ export default function PeriodManagementPage() {
   async function load() {
     if (!user) return;
     setLoading(true);
-    setError('');
     try {
       const data = await getPeriodStatus(user.legalEntityId);
       setPeriods(Array.isArray(data) ? data : []);
     } catch {
-      setError('Failed to load periods.');
+      showToast('Failed to load periods.', 'error');
     } finally {
       setLoading(false);
     }
@@ -71,9 +71,10 @@ export default function PeriodManagementPage() {
     setConfirmId(null);
     try {
       await ACTION_FN[action](id, user.email);
+      showToast('Period status updated successfully.', 'success');
       await load();
     } catch {
-      setError('Failed to update period status. Please try again.');
+      showToast('Failed to update period status. Please try again.', 'error');
     } finally {
       setActingId(null);
     }
@@ -89,15 +90,13 @@ export default function PeriodManagementPage() {
       <Card className="mt-6">
         {loading && <LoadingSpinner />}
 
-        {!loading && error && <p className="py-10 text-center text-sm text-red-600">{error}</p>}
-
-        {!loading && !error && periods.length === 0 && (
+        {!loading && periods.length === 0 && (
           <p className="py-10 text-center text-sm text-slate">
             No periods found for this legal entity.
           </p>
         )}
 
-        {!loading && !error && periods.length > 0 && (
+        {!loading && periods.length > 0 && (
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">

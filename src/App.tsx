@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import LoginPage from './pages/LoginPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import JournalEntryPage from './pages/JournalEntryPage';
 import JournalListingPage from './pages/JournalListingPage';
@@ -14,94 +16,105 @@ import CashFlowPage from './pages/CashFlowPage';
 import PeriodManagementPage from './pages/PeriodManagementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  if (isLoading) return <LoadingSpinner fullScreen />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.mustChangePwd) return <Navigate to="/change-password" replace />;
+  return <>{children}</>;
+}
+
+function ChangePasswordRoute() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner fullScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  return <ChangePasswordPage />;
 }
 
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/journals/new"
-            element={
-              <ProtectedRoute>
-                <JournalEntryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/journals"
-            element={
-              <ProtectedRoute>
-                <JournalListingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/trial-balance"
-            element={
-              <ProtectedRoute>
-                <TrialBalancePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pl-statement"
-            element={
-              <ProtectedRoute>
-                <PLStatementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/balance-sheet"
-            element={
-              <ProtectedRoute>
-                <BalanceSheetPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/account-ledger"
-            element={
-              <ProtectedRoute>
-                <AccountLedgerPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cash-flow"
-            element={
-              <ProtectedRoute>
-                <CashFlowPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/period-management"
-            element={
-              <ProtectedRoute>
-                <PeriodManagementPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/change-password" element={<ChangePasswordRoute />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals/new"
+              element={
+                <ProtectedRoute>
+                  <JournalEntryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/journals"
+              element={
+                <ProtectedRoute>
+                  <JournalListingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trial-balance"
+              element={
+                <ProtectedRoute>
+                  <TrialBalancePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pl-statement"
+              element={
+                <ProtectedRoute>
+                  <PLStatementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/balance-sheet"
+              element={
+                <ProtectedRoute>
+                  <BalanceSheetPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/account-ledger"
+              element={
+                <ProtectedRoute>
+                  <AccountLedgerPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cash-flow"
+              element={
+                <ProtectedRoute>
+                  <CashFlowPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/period-management"
+              element={
+                <ProtectedRoute>
+                  <PeriodManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

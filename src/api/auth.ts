@@ -13,3 +13,18 @@ export async function getMe() {
   const { data } = await api.get<ApiResponse<MeResponse>>('/api/v1/auth/me');
   return data.data;
 }
+
+export async function refreshAccessToken(refreshToken: string) {
+  const { data } = await api.post<ApiResponse<{ accessToken: string }>>('/api/v1/auth/refresh', {
+    refreshToken,
+  });
+  return data.data;
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.post<ApiResponse<null>>('/api/v1/auth/change-password', {
+    currentPassword,
+    newPassword,
+  });
+  return data.data;
+}

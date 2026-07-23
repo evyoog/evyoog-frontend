@@ -9,9 +9,14 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
+  clearMustChangePwd: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function persistUser(userData: User) {
+  localStorage.setItem('user', JSON.stringify(userData));
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -38,8 +43,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       permissions: loginData.permissions,
       mustChangePwd: loginData.mustChangePwd,
     };
-    localStorage.setItem('user', JSON.stringify(userData));
+    persistUser(userData);
     setUser(userData);
+
+    // Best-effort enrichment — legalEntityName isn't in the login response.
+    try {
+      const me = await authApi.getMe();
+      const enriched: User = { ...userData, legalEntityName: me.legalEntityName };
+      persistUser(enriched);
+      setUser(enriched);
+    } catch {
+      // Non-critical — TopBar falls back gracefully without the LE name.
+    }
   };
 
   const logout = () => {
@@ -53,9 +68,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.permissions.includes(permission) ?? false;
   };
 
+  const clearMustChangePwd = () => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, mustChangePwd: false };
+      persistUser(updated);
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, logout, hasPermission }}
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+        hasPermission,
+        clearMustChangePwd,
+      }}
     >
       {children}
     </AuthContext.Provider>
