@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import LoginPage from './pages/LoginPage';
-import ChangePasswordPage from './pages/ChangePasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import JournalEntryPage from './pages/JournalEntryPage';
 import JournalListingPage from './pages/JournalListingPage';
@@ -16,18 +15,10 @@ import CashFlowPage from './pages/CashFlowPage';
 import PeriodManagementPage from './pages/PeriodManagementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading, user } = useAuth();
-  if (isLoading) return <LoadingSpinner fullScreen />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.mustChangePwd) return <Navigate to="/change-password" replace />;
-  return <>{children}</>;
-}
-
-function ChangePasswordRoute() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <LoadingSpinner fullScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <ChangePasswordPage />;
+  return <>{children}</>;
 }
 
 export default function App() {
@@ -37,7 +28,6 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/change-password" element={<ChangePasswordRoute />} />
             <Route
               path="/dashboard"
               element={

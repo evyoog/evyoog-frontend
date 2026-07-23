@@ -9,7 +9,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
-  clearMustChangePwd: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -68,15 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user?.permissions.includes(permission) ?? false;
   };
 
-  const clearMustChangePwd = () => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, mustChangePwd: false };
-      persistUser(updated);
-      return updated;
-    });
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -86,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         hasPermission,
-        clearMustChangePwd,
       }}
     >
       {children}

@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pwdBannerDismissed, setPwdBannerDismissed] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -57,6 +58,22 @@ export default function DashboardPage() {
 
   return (
     <AppLayout breadcrumb="Dashboard">
+      {user?.mustChangePwd && !pwdBannerDismissed && (
+        <div className="mb-6 flex items-center justify-between rounded-md border-l-4 border-l-amber bg-amber-light px-4 py-3 text-sm text-amber">
+          <span className="font-medium">
+            Your password needs to be changed. Please contact your system administrator.
+          </span>
+          <button
+            type="button"
+            onClick={() => setPwdBannerDismissed(true)}
+            className="shrink-0 text-current opacity-60 hover:opacity-100"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold text-navy">Good morning, {user?.fullName}</h1>
       <p className="mt-1 text-sm text-slate">{user?.legalEntityId}</p>
 
