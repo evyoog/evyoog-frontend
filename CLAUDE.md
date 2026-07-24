@@ -60,3 +60,12 @@ Entry fields: lineId, journalHeaderId, journalNumber, glDate, accountingDate,
   journalDescription, lineDescription, debitAmount, creditAmount, runningBalance,
   journalSourceCode, journalCategoryCode, gstApplicable, tdsApplicable, createdAt
 Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryCount
+
+## Foundation Layer (July 22, 2026)
+- Toast system: useToast() from src/context/ToastContext.tsx
+- formatDate/formatDateTime: src/utils/format.ts — returns DD-MMM-YYYY
+- Silent JWT refresh: axios.ts handles 401 with refresh before redirect
+- Session timeout: SessionTimeoutWarning.tsx — 5 min warning before JWT expiry
+- TopBar: legalEntityName from getPeriodStatus()[0].legalEntityName (NOT from /auth/me)
+- mustChangePwd: amber banner on Dashboard — no change-password endpoint yet
+- useAuth: MUST be named function declaration (not arrow function) for Vite HMR
