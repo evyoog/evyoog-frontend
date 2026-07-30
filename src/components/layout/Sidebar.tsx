@@ -19,6 +19,11 @@ const topNavItems: NavItem[] = [
   { label: 'Cash Flow', to: '/cash-flow', permission: 'gl:balance-sheet:view' },
 ];
 
+const setupNavItems: NavItem[] = [
+  { label: 'Finance Dimensions', to: '/finance-dimensions', permission: 'gl:dimension:view' },
+  { label: 'Chart of Accounts', to: '/chart-of-accounts', permission: 'gl:accounts:view' },
+];
+
 function NavItemLink({ item }: { item: NavItem }) {
   const { hasPermission } = useAuth();
   const allowed = item.permission ? hasPermission(item.permission) : true;
@@ -41,15 +46,30 @@ function NavItemLink({ item }: { item: NavItem }) {
 }
 
 export default function Sidebar() {
+  const { hasPermission } = useAuth();
+  const showSetupSection = setupNavItems.some(
+    (item) => !item.permission || hasPermission(item.permission),
+  );
+
   return (
     <aside className="flex h-screen w-60 flex-shrink-0 flex-col bg-navy">
       <div className="px-4 py-5">
         <span className="text-lg font-bold text-white">eVyoog ERP</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 border-t border-white/10 pt-3">
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto border-t border-white/10 pt-3">
         {topNavItems.map((item) => (
           <NavItemLink key={item.to} item={item} />
         ))}
+        {showSetupSection && (
+          <>
+            <div className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-white/40">
+              Setup
+            </div>
+            {setupNavItems.map((item) => (
+              <NavItemLink key={item.to} item={item} />
+            ))}
+          </>
+        )}
       </nav>
       <div className="border-t border-white/10 py-3">
         <NavItemLink item={{ label: 'Settings', to: '/settings' }} />

@@ -13,6 +13,8 @@ import BalanceSheetPage from './pages/BalanceSheetPage';
 import AccountLedgerPage from './pages/AccountLedgerPage';
 import CashFlowPage from './pages/CashFlowPage';
 import PeriodManagementPage from './pages/PeriodManagementPage';
+import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
+import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -97,6 +99,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <PeriodManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/finance-dimensions"
+              element={
+                <ProtectedRoute>
+                  <FinanceDimensionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chart-of-accounts"
+              element={
+                <ProtectedRoute>
+                  <ChartOfAccountsPage />
                 </ProtectedRoute>
               }
             />

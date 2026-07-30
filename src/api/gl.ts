@@ -1,11 +1,14 @@
 import api from './axios';
 import type {
+  Account,
   AccountLedgerReport,
   ApiResponse,
   BalanceSheetReport,
   CashFlowReport,
   ChartOfAccountsResponse,
+  CoaImportResult,
   CreateJournalRequest,
+  FinanceDimension,
   Journal,
   JournalCategory,
   JournalSource,
@@ -134,5 +137,92 @@ export async function getCashFlow(legalEntityId: string, periodId: string) {
   const { data } = await api.get<ApiResponse<CashFlowReport>>('/api/v1/gl/reports/cash-flow', {
     params: { legalEntityId, periodId },
   });
+  return data.data;
+}
+
+export async function listFinanceDimensions(ledgerId: string) {
+  const { data } = await api.get<ApiResponse<FinanceDimension[]>>(
+    '/api/v1/gl/finance-dimensions',
+    { params: { ledgerId } },
+  );
+  return data.data;
+}
+
+export async function createFinanceDimension(body: {
+  ledgerId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  dimensionType: string;
+  displayOrder: number;
+}) {
+  const { data } = await api.post<ApiResponse<FinanceDimension>>(
+    '/api/v1/gl/finance-dimensions',
+    body,
+  );
+  return data.data;
+}
+
+export async function updateFinanceDimension(
+  id: string,
+  body: Partial<{
+    code: string;
+    name: string;
+    description: string | null;
+    dimensionType: string;
+    displayOrder: number;
+  }>,
+) {
+  const { data } = await api.put<ApiResponse<FinanceDimension>>(
+    `/api/v1/gl/finance-dimensions/${id}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function getChartOfAccounts(legalEntityId: string, ledgerId: string) {
+  const { data } = await api.get<ApiResponse<ChartOfAccountsResponse>>(
+    '/api/v1/gl/chart-of-accounts',
+    { params: { legalEntityId, ledgerId } },
+  );
+  return data.data;
+}
+
+export async function searchChartOfAccounts(ledgerId: string, query: string) {
+  const { data } = await api.get<ApiResponse<Account[]>>('/api/v1/gl/chart-of-accounts/search', {
+    params: { ledgerId, query },
+  });
+  return data.data;
+}
+
+export async function createAccount(
+  body: Partial<Account> & { ledgerId: string; legalEntityId: string },
+) {
+  const { data } = await api.post<ApiResponse<Account>>('/api/v1/gl/chart-of-accounts', body);
+  return data.data;
+}
+
+export async function updateAccount(accountId: string, body: Partial<Account>) {
+  const { data } = await api.put<ApiResponse<Account>>(
+    `/api/v1/gl/chart-of-accounts/${accountId}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function importChartOfAccounts(
+  legalEntityId: string,
+  ledgerId: string,
+  file: File,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('legalEntityId', legalEntityId);
+  formData.append('ledgerId', ledgerId);
+  const { data } = await api.post<ApiResponse<CoaImportResult>>(
+    '/api/v1/gl/coa-import-jobs',
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
   return data.data;
 }

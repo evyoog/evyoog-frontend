@@ -99,11 +99,66 @@ export interface ChartOfAccount {
   isPostable?: boolean;
 }
 
+export interface Account {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  parentAccountId: string | null;
+  parentAccountCode: string | null;
+  parentAccountName: string | null;
+  qualifier: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+  isSummary: boolean;
+  isPostable: boolean;
+  normalBalance: 'DR' | 'CR';
+  gstApplicable: boolean;
+  tdsApplicable: boolean;
+  tdsSection: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  budgetControlled: boolean;
+  extendedAttributes: Record<string, unknown> | null;
+  displayOrder: number;
+  isActive: boolean;
+  children: Account[];
+  createdAt: string;
+  createdBy?: string | null;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+}
+
 export interface ChartOfAccountsResponse {
   ledgerId: string;
+  financeDimensionId: string;
   totalCount: number;
   postableCount: number;
-  accounts: ChartOfAccount[];
+  summaryCount: number;
+  accounts: Account[];
+}
+
+export interface CoaImportResult {
+  id: string;
+  status: string;
+  totalRows: number;
+  successCount: number;
+  errorCount: number;
+  errors: { row: number; message: string }[];
+}
+
+export interface FinanceDimension {
+  id: string;
+  ledgerId: string;
+  ledgerName: string;
+  code: string;
+  name: string;
+  description: string | null;
+  dimensionType: string;
+  isRequired: boolean;
+  displayOrder: number;
+  isActive: boolean;
+  valueCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TrialBalanceRow {
