@@ -8,6 +8,7 @@ import type {
   ChartOfAccountsResponse,
   CoaImportResult,
   CreateJournalRequest,
+  DimensionValue,
   FinanceDimension,
   Journal,
   JournalCategory,
@@ -206,6 +207,41 @@ export async function updateAccount(accountId: string, body: Partial<Account>) {
   const { data } = await api.put<ApiResponse<Account>>(
     `/api/v1/gl/chart-of-accounts/${accountId}`,
     body,
+  );
+  return data.data;
+}
+
+export async function listDimensionValues(financeDimensionId: string) {
+  const { data } = await api.get<ApiResponse<DimensionValue[]>>('/api/v1/gl/dimension-values', {
+    params: { financeDimensionId },
+  });
+  return data.data;
+}
+
+export async function createDimensionValue(
+  body: Partial<DimensionValue> & { financeDimensionId: string; code: string; name: string },
+) {
+  const { data } = await api.post<ApiResponse<DimensionValue>>('/api/v1/gl/dimension-values', body);
+  return data.data;
+}
+
+export async function updateDimensionValue(id: string, body: Partial<DimensionValue>) {
+  const { data } = await api.put<ApiResponse<DimensionValue>>(
+    `/api/v1/gl/dimension-values/${id}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function deactivateDimensionValue(id: string) {
+  const { data } = await api.delete<ApiResponse<unknown>>(`/api/v1/gl/dimension-values/${id}`);
+  return data;
+}
+
+export async function searchDimensionValues(ledgerId: string, code: string) {
+  const { data } = await api.get<ApiResponse<DimensionValue[]>>(
+    '/api/v1/gl/dimension-values/search',
+    { params: { ledgerId, code } },
   );
   return data.data;
 }

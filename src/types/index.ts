@@ -161,6 +161,38 @@ export interface FinanceDimension {
   updatedAt: string;
 }
 
+export interface DimensionValue {
+  id: string;
+  financeDimensionId: string;
+  dimensionCode: string;
+  dimensionName: string;
+  dimensionType: string;
+  code: string;
+  name: string;
+  description: string | null;
+  parentValueId: string | null;
+  parentValueCode: string | null;
+  parentValueName: string | null;
+  accountQualifier: string | null;
+  isSummary: boolean;
+  isPostable: boolean;
+  normalBalance: string | null;
+  gstApplicable: boolean;
+  tdsApplicable: boolean;
+  tdsSection: string | null;
+  displayOrder: number;
+  isActive: boolean;
+  ccManagerName: string | null;
+  ccManagerEmail: string | null;
+  ccDepartment: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  budgetControlled: boolean;
+  extendedAttributes: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;
