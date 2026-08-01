@@ -15,6 +15,8 @@ import CashFlowPage from './pages/CashFlowPage';
 import PeriodManagementPage from './pages/PeriodManagementPage';
 import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
+import UserManagementPage from './pages/UserManagementPage';
+import RoleManagementPage from './pages/RoleManagementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -115,6 +117,22 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ChartOfAccountsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <UserManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roles"
+              element={
+                <ProtectedRoute>
+                  <RoleManagementPage />
                 </ProtectedRoute>
               }
             />

@@ -24,6 +24,11 @@ const setupNavItems: NavItem[] = [
   { label: 'Chart of Accounts', to: '/chart-of-accounts', permission: 'gl:accounts:view' },
 ];
 
+const adminNavItems: NavItem[] = [
+  { label: 'User Management', to: '/users', permission: 'gl:users:view' },
+  { label: 'Role Management', to: '/roles', permission: 'gl:roles:view' },
+];
+
 function NavItemLink({ item }: { item: NavItem }) {
   const { hasPermission } = useAuth();
   const allowed = item.permission ? hasPermission(item.permission) : true;
@@ -50,6 +55,9 @@ export default function Sidebar() {
   const showSetupSection = setupNavItems.some(
     (item) => !item.permission || hasPermission(item.permission),
   );
+  const showAdminSection = adminNavItems.some(
+    (item) => !item.permission || hasPermission(item.permission),
+  );
 
   return (
     <aside className="flex h-screen w-60 flex-shrink-0 flex-col bg-navy">
@@ -66,6 +74,16 @@ export default function Sidebar() {
               Setup
             </div>
             {setupNavItems.map((item) => (
+              <NavItemLink key={item.to} item={item} />
+            ))}
+          </>
+        )}
+        {showAdminSection && (
+          <>
+            <div className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-white/40">
+              Admin
+            </div>
+            {adminNavItems.map((item) => (
               <NavItemLink key={item.to} item={item} />
             ))}
           </>

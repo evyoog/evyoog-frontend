@@ -193,6 +193,35 @@ export interface DimensionValue {
   updatedAt: string;
 }
 
+export interface AppUser {
+  id: string;
+  email: string;
+  fullName: string;
+  isActive: boolean;
+  mustChangePwd: boolean;
+  lastLoginAt: string | null;
+  createdAt: string;
+}
+
+export interface UserRoleAssignment {
+  userRoleId: string;
+  roleId: string;
+  roleCode: string;
+  roleName: string;
+  legalEntityId: string;
+  legalEntityCode: string;
+}
+
+export interface Role {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  isSystemRole: boolean;
+  isActive: boolean;
+  permissions: string[];
+}
+
 export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;
