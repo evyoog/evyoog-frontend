@@ -96,8 +96,10 @@ export async function listLedgers(legalEntityId: string) {
   return data.data;
 }
 
-export async function listJournalSources() {
-  const { data } = await api.get<ApiResponse<JournalSource[]>>('/api/v1/gl/journal-sources');
+export async function listJournalSources(legalEntityId?: string) {
+  const { data } = await api.get<ApiResponse<JournalSource[]>>('/api/v1/gl/journal-sources', {
+    params: legalEntityId ? { legalEntityId } : undefined,
+  });
   return data.data;
 }
 

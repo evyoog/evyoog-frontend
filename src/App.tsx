@@ -17,6 +17,7 @@ import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
+import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -133,6 +134,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <RoleManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/approval-policy"
+              element={
+                <ProtectedRoute>
+                  <ApprovalPolicyPage />
                 </ProtectedRoute>
               }
             />

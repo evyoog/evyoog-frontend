@@ -27,6 +27,7 @@ const setupNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { label: 'User Management', to: '/users', permission: 'gl:users:view' },
   { label: 'Role Management', to: '/roles', permission: 'gl:roles:view' },
+  { label: 'Approval Policy', to: '/approval-policy', permission: 'gl:approval-policy:view' },
 ];
 
 function NavItemLink({ item }: { item: NavItem }) {

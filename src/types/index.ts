@@ -84,6 +84,8 @@ export interface JournalSource {
   id: string;
   code: string;
   name: string;
+  description?: string | null;
+  requiresApproval?: boolean;
 }
 
 export interface JournalCategory {
@@ -220,6 +222,18 @@ export interface Role {
   isSystemRole: boolean;
   isActive: boolean;
   permissions: string[];
+}
+
+export interface ApprovalPolicy {
+  id: string;
+  legalEntityId: string;
+  businessUnitId: string | null;
+  inventoryOrgId: string | null;
+  journalSourceCode: string;
+  requiresApproval: boolean;
+  approvalThresholdAmount: number | null;
+  approverRoleCode: string | null;
+  isActive: boolean;
 }
 
 export interface TrialBalanceRow {

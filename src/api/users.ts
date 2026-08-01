@@ -1,5 +1,5 @@
 import api from './axios';
-import type { ApiResponse, AppUser, Role, UserRoleAssignment } from '../types';
+import type { ApiResponse, ApprovalPolicy, AppUser, Role, UserRoleAssignment } from '../types';
 
 export async function listUsers(legalEntityId: string) {
   const { data } = await api.get<ApiResponse<AppUser[]>>('/api/v1/auth/users', {
@@ -77,4 +77,47 @@ export async function updateRole(
 ) {
   const { data } = await api.put<ApiResponse<Role>>(`/api/v1/auth/roles/${roleId}`, body);
   return data.data;
+}
+
+export async function listApprovalPolicies(legalEntityId: string) {
+  const { data } = await api.get<ApiResponse<ApprovalPolicy[]>>('/api/v1/auth/approval-policies', {
+    params: { legalEntityId },
+  });
+  return data.data;
+}
+
+export async function createApprovalPolicy(body: {
+  legalEntityId: string;
+  journalSourceCode: string;
+  requiresApproval: boolean;
+  businessUnitId: string | null;
+  inventoryOrgId: string | null;
+  approvalThresholdAmount: number | null;
+  approverRoleCode: string | null;
+}) {
+  const { data } = await api.post<ApiResponse<ApprovalPolicy>>('/api/v1/auth/approval-policies', body);
+  return data.data;
+}
+
+export async function updateApprovalPolicy(
+  id: string,
+  body: {
+    journalSourceCode: string;
+    requiresApproval: boolean;
+    businessUnitId: string | null;
+    inventoryOrgId: string | null;
+    approvalThresholdAmount: number | null;
+    approverRoleCode: string | null;
+  },
+) {
+  const { data } = await api.put<ApiResponse<ApprovalPolicy>>(
+    `/api/v1/auth/approval-policies/${id}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function deleteApprovalPolicy(id: string) {
+  const { data } = await api.delete<ApiResponse<unknown>>(`/api/v1/auth/approval-policies/${id}`);
+  return data;
 }
