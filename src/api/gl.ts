@@ -1,6 +1,8 @@
 import api from './axios';
 import type {
   Account,
+  AccountingCalendar,
+  AccountingPeriod,
   AccountLedgerReport,
   ApiResponse,
   BalanceSheetReport,
@@ -92,6 +94,34 @@ export async function lockPeriod(periodStatusId: string, actionBy: string) {
 export async function listLedgers(legalEntityId: string) {
   const { data } = await api.get<ApiResponse<Ledger[]>>('/api/v1/gl/ledgers', {
     params: { legalEntityId },
+  });
+  return data.data;
+}
+
+export async function getAccountingCalendar(ledgerId: string) {
+  const { data } = await api.get<ApiResponse<AccountingCalendar>>(
+    '/api/v1/gl/accounting-calendars',
+    { params: { ledgerId } },
+  );
+  return data.data;
+}
+
+export async function listAccountingPeriods(calendarId: string) {
+  const { data } = await api.get<ApiResponse<AccountingPeriod[]>>(
+    `/api/v1/gl/accounting-calendars/${calendarId}/periods`,
+  );
+  return data.data;
+}
+
+export async function initialisePeriod(
+  legalEntityId: string,
+  accountingPeriodId: string,
+  openedBy: string,
+) {
+  const { data } = await api.post<ApiResponse<PeriodStatus>>('/api/v1/gl/period-status', {
+    legalEntityId,
+    accountingPeriodId,
+    openedBy,
   });
   return data.data;
 }

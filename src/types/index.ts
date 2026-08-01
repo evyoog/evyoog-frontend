@@ -284,6 +284,42 @@ export interface Ledger {
   currency: string;
 }
 
+export interface AccountingPeriod {
+  id: string;
+  accountingCalendarId: string;
+  calendarName: string;
+  name: string;
+  periodNumber: number;
+  fiscalYear: string;
+  periodType: string;
+  quarterNumber: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AccountingCalendar {
+  id: string;
+  ledgerId: string;
+  ledgerName: string;
+  name: string;
+  fiscalYearStartMonth: number;
+  fiscalYearStartDay: number;
+  periodType: string;
+  periodsPerYear: number;
+  isActive: boolean;
+  generatedPeriodCount: number;
+  currentFiscalYear: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PeriodRow {
+  period: AccountingPeriod;
+  status: PeriodStatus | null;
+}
+
 export interface PLItem {
   accountCode: string;
   accountName: string;
