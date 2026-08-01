@@ -69,3 +69,12 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - TopBar: legalEntityName from getPeriodStatus()[0].legalEntityName (NOT from /auth/me)
 - mustChangePwd: amber banner on Dashboard — no change-password endpoint yet
 - useAuth: MUST be named function declaration (not arrow function) for Vite HMR
+
+## User Management + Role Management (July 2026)
+- User type named AppUser (not User — conflicts with AuthContext User type)
+- API functions in src/api/users.ts (NOT gl.ts) — clean separation
+- Permission catalog in src/utils/permissions.ts — grouped by category with labels
+- UserRolesPanel.tsx — slide-over for role assignments per user
+- GET /api/v1/auth/users/{id}/roles — backend bug, returns 500 (GET not registered)
+  Frontend handles gracefully with toast error — fix needed on backend
+- System roles (isSystemRole: true) — read-only, cannot deactivate, code fixed
