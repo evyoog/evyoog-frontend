@@ -88,3 +88,10 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Button.tsx has new amber variant for destructive-but-not-red actions
 - Close period uses proper Modal (PM-02) not inline Yes/No
 - Locked-by/at surfaced via tooltip on LOCKED badge (PM-03)
+
+## Change Password (August 2026)
+- Backend error response uses {status, code, message, field, timestamp} envelope
+  NOT the standard {success, data, message, errors} envelope
+  Branch on error.response.data.code: INVALID_CURRENT_PASSWORD | WEAK_PASSWORD
+- clearMustChangePwd restored in AuthContext — clears mustChangePwd flag after success
+- Dashboard amber banner updated with "Change Password →" React Router Link
