@@ -78,3 +78,13 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - GET /api/v1/auth/users/{id}/roles — backend bug, returns 500 (GET not registered)
   Frontend handles gracefully with toast error — fix needed on backend
 - System roles (isSystemRole: true) — read-only, cannot deactivate, code fixed
+
+## Period Management Enhancement (PM-01/PM-02/PM-03 — August 2026)
+- GET /api/v1/gl/accounting-calendars?ledgerId returns single object (NOT array)
+  Use data.data directly — NOT data.data[0]
+- GET /api/v1/gl/accounting-calendars/{calendarId}/periods returns all 12 periods
+- Merge strategy: Map<accountingPeriodId, PeriodStatus> — periods without
+  status row show as NOT_INITIALISED with Initialise button
+- Button.tsx has new amber variant for destructive-but-not-red actions
+- Close period uses proper Modal (PM-02) not inline Yes/No
+- Locked-by/at surfaced via tooltip on LOCKED badge (PM-03)
