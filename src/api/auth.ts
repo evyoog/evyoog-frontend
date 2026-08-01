@@ -20,3 +20,11 @@ export async function refreshAccessToken(refreshToken: string) {
   });
   return data.data;
 }
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.post<ApiResponse<null>>('/api/v1/auth/change-password', {
+    currentPassword,
+    newPassword,
+  });
+  return data;
+}

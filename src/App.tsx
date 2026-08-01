@@ -18,6 +18,7 @@ import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -142,6 +143,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ApprovalPolicyPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/change-password"
+              element={
+                <ProtectedRoute>
+                  <ChangePasswordPage />
                 </ProtectedRoute>
               }
             />

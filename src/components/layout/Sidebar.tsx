@@ -92,6 +92,7 @@ export default function Sidebar() {
       </nav>
       <div className="border-t border-white/10 py-3">
         <NavItemLink item={{ label: 'Settings', to: '/settings' }} />
+        <NavItemLink item={{ label: 'Change Password', to: '/change-password' }} />
       </div>
     </aside>
   );

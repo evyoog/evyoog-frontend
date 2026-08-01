@@ -61,7 +61,11 @@ export default function DashboardPage() {
       {user?.mustChangePwd && !pwdBannerDismissed && (
         <div className="mb-6 flex items-center justify-between rounded-md border-l-4 border-l-amber bg-amber-light px-4 py-3 text-sm text-amber">
           <span className="font-medium">
-            Your password needs to be changed. Please contact your system administrator.
+            Your password needs to be changed.{' '}
+            <Link to="/change-password" className="underline hover:opacity-80">
+              Change Password →
+            </Link>{' '}
+            or contact your system administrator.
           </span>
           <button
             type="button"
