@@ -276,9 +276,13 @@ export default function PeriodManagementPage() {
                         <StatusBadge row={row} />
                       </td>
                       <td className="py-2 pr-2">{row.status?.openedBy ?? '—'}</td>
-                      <td className="py-2 pr-2">{formatIST(row.status?.openedAt)}</td>
+                      <td className="py-2 pr-2" title={row.status?.openedAt ?? ''}>
+                        {formatIST(row.status?.openedAt)}
+                      </td>
                       <td className="py-2 pr-2">{row.status?.closedBy ?? '—'}</td>
-                      <td className="py-2 pr-2">{formatIST(row.status?.closedAt)}</td>
+                      <td className="py-2 pr-2" title={row.status?.closedAt ?? ''}>
+                        {formatIST(row.status?.closedAt)}
+                      </td>
                       <td className="py-2 pr-2">
                         {!canManage ? null : status === 'NOT_INITIALISED' ? (
                           initialiseId === row.period.id ? (

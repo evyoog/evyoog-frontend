@@ -134,7 +134,7 @@ export default function JournalListingPage() {
         </div>
 
         <div className="mt-6">
-          {loading && <TableSkeleton rows={8} columns={7} />}
+          {loading && <TableSkeleton rows={8} columns={8} />}
 
           {!loading && error && (
             <ErrorState message="Failed to load journals. Please try again." onRetry={loadJournals} />
@@ -162,6 +162,7 @@ export default function JournalListingPage() {
                     <th className="py-2 pr-2 text-right font-medium">Debit</th>
                     <th className="py-2 pr-2 text-right font-medium">Credit</th>
                     <th className="py-2 pr-2 font-medium">Status</th>
+                    <th className="py-2 pr-2 font-medium">Posted At</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,7 +176,17 @@ export default function JournalListingPage() {
                       <td className="py-2 pr-2 text-right font-mono">{formatINR(j.totalDebit)}</td>
                       <td className="py-2 pr-2 text-right font-mono">{formatINR(j.totalCredit)}</td>
                       <td className="py-2 pr-2">
-                        <Badge status={j.status} />
+                        <div className="flex items-center gap-1.5">
+                          <Badge status={j.status} />
+                          {j.status === 'POSTED' && (
+                            <span className="inline-flex items-center rounded-full bg-green-light px-2 py-0.5 text-xs font-medium text-green">
+                              ✓ Posted
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-2 pr-2">
+                        {j.status === 'POSTED' ? formatDate(j.postedAt) : '—'}
                       </td>
                     </tr>
                   ))}

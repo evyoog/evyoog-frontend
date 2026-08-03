@@ -154,7 +154,10 @@ export default function UserManagementPage() {
         roleId: addForm.roleId,
         legalEntityId: user.legalEntityId,
       });
-      showToast('User created successfully.', 'success');
+      showToast(
+        `User ${addForm.fullName.trim()} created successfully. They must change their password on first login.`,
+        'success',
+      );
       setShowAddModal(false);
       await load();
     } catch {
@@ -254,7 +257,7 @@ export default function UserManagementPage() {
       )}
 
       <Card className="mt-6">
-        {loading && <TableSkeleton rows={5} columns={7} />}
+        {loading && <TableSkeleton rows={5} columns={8} />}
 
         {!loading && error && (
           <ErrorState message="Failed to load users. Please try again." onRetry={load} />
@@ -278,6 +281,7 @@ export default function UserManagementPage() {
                 <th className="py-2 pr-2 font-medium">Status</th>
                 <th className="py-2 pr-2 font-medium">Must Change Pwd</th>
                 <th className="py-2 pr-2 font-medium">Last Login</th>
+                <th className="py-2 pr-2 font-medium">Created</th>
                 <th className="py-2 pr-2 font-medium">Roles</th>
                 <th className="py-2 pr-2 font-medium">Actions</th>
               </tr>
@@ -294,6 +298,7 @@ export default function UserManagementPage() {
                     <MustChangePwdBadge mustChangePwd={u.mustChangePwd} />
                   </td>
                   <td className="py-2 pr-2">{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</td>
+                  <td className="py-2 pr-2">{formatDate(u.createdAt)}</td>
                   <td className="py-2 pr-2">
                     <div className="flex flex-wrap gap-1">
                       {(userRoles[u.id] ?? []).length === 0 && <span className="text-slate">—</span>}

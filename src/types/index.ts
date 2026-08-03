@@ -405,6 +405,7 @@ export interface AccountLedgerLine {
   gstApplicable: boolean;
   tdsApplicable: boolean;
   createdAt: string;
+  accountCombination?: Record<string, string> | null;
 }
 
 export interface AccountLedgerReport {

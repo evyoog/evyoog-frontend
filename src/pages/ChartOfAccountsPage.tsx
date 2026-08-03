@@ -688,6 +688,16 @@ export default function ChartOfAccountsPage() {
                 />
               </div>
             )}
+
+            {editing && (
+              <div className="col-span-2 border-t pt-4 mt-4">
+                <p className="text-xs font-medium text-gray-500 uppercase mb-2">Record Info</p>
+                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                  <div>Created: {formatDate(editing.createdAt)}</div>
+                  <div>Account ID: {editing.id.slice(0, 8)}...</div>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getAccountLedger, getPeriodStatus, listChartOfAccounts, listLedgers } from '../api/gl';
 import type { AccountLedgerReport, ChartOfAccount, PeriodStatus } from '../types';
-import { formatINR, formatDate } from '../utils/format';
+import { formatINR, formatDate, formatIST } from '../utils/format';
 
 function exportCsv(report: AccountLedgerReport) {
   const header = ['Journal #', 'Date', 'Description', 'Debit', 'Credit', 'Running Balance'];
@@ -175,9 +175,12 @@ export default function AccountLedgerPage() {
 
           {!loadingOptions && !running && !error && report && (
             <>
-              <p className="mb-4 text-sm font-medium text-navy">
+              <p className="mb-1 text-sm font-medium text-navy">
                 Opening Balance: <span className="font-mono">{formatINR(report.openingBalance)}</span>
               </p>
+              <div className="mb-4 text-sm text-gray-500">
+                Period: {report.periodName} · Generated: {formatIST(new Date().toISOString())}
+              </div>
               <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -185,17 +188,40 @@ export default function AccountLedgerPage() {
                     <th className="py-2 pr-2 font-medium">Journal #</th>
                     <th className="py-2 pr-2 font-medium">Date</th>
                     <th className="py-2 pr-2 font-medium">Description</th>
+                    <th className="py-2 pr-2 font-medium">Cost Centre</th>
+                    <th className="py-2 pr-2 font-medium">Product</th>
                     <th className="py-2 pr-2 text-right font-medium">Debit</th>
                     <th className="py-2 pr-2 text-right font-medium">Credit</th>
                     <th className="py-2 pr-2 text-right font-medium">Running Balance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {report.entries?.map((line) => (
+                  {report.entries?.map((line) => {
+                    const costCentre = line.accountCombination?.['COST_CENTRE'];
+                    const product = line.accountCombination?.['PRODUCT'];
+                    return (
                     <tr key={line.journalHeaderId} className="border-b border-border">
                       <td className="py-2 pr-2 font-mono text-navy">{line.journalNumber}</td>
                       <td className="py-2 pr-2">{formatDate(line.glDate)}</td>
                       <td className="py-2 pr-2">{line.journalDescription}</td>
+                      <td className="py-2 pr-2">
+                        {costCentre ? (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate">
+                            {costCentre}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-2 pr-2">
+                        {product ? (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate">
+                            {product}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td className="py-2 pr-2 text-right font-mono">
                         {line.debitAmount != null ? formatINR(line.debitAmount) : ''}
                       </td>
@@ -208,11 +234,12 @@ export default function AccountLedgerPage() {
                         {formatINR(line.runningBalance)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-navy font-semibold text-navy">
-                    <td className="py-3 pr-2" colSpan={3}>
+                    <td className="py-3 pr-2" colSpan={5}>
                       Totals
                     </td>
                     <td className="py-3 pr-2 text-right font-mono">
