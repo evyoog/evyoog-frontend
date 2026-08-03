@@ -3,7 +3,7 @@ import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getAccountLedger, getPeriodStatus, listChartOfAccounts, listLedgers } from '../api/gl';
@@ -40,6 +40,7 @@ export default function AccountLedgerPage() {
   const [report, setReport] = useState<AccountLedgerReport | null>(null);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [running, setRunning] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -80,10 +81,12 @@ export default function AccountLedgerPage() {
   const runReport = async () => {
     if (!user || !periodId || !accountId) return;
     setRunning(true);
+    setError(false);
     try {
       const data = await getAccountLedger(user.legalEntityId, periodId, accountId);
       setReport(data);
     } catch {
+      setError(true);
       showToast('Failed to load account ledger. Please try again.', 'error');
     } finally {
       setRunning(false);
@@ -101,6 +104,7 @@ export default function AccountLedgerPage() {
             <Select
               id="period"
               label="Period"
+              aria-label="Select accounting period"
               value={periodId}
               onChange={(e) => setPeriodId(e.target.value)}
               disabled={loadingOptions}
@@ -117,6 +121,7 @@ export default function AccountLedgerPage() {
             <Select
               id="account"
               label="Account"
+              aria-label="Select account"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               disabled={loadingOptions}
@@ -129,30 +134,51 @@ export default function AccountLedgerPage() {
               ))}
             </Select>
           </div>
-          <Button onClick={runReport} loading={running} disabled={!periodId || !accountId}>
-            Run Report
+          <Button
+            onClick={runReport}
+            loading={running}
+            disabled={running || !periodId || !accountId}
+            aria-busy={running}
+            aria-label="Run report for selected period"
+          >
+            {running ? 'Loading...' : 'Run Report'}
           </Button>
           {report && (
-            <Button variant="secondary" onClick={() => exportCsv(report)}>
+            <Button
+              variant="secondary"
+              onClick={() => exportCsv(report)}
+              aria-label="Export report as CSV"
+            >
               Export CSV
             </Button>
           )}
         </div>
 
         <div className="mt-6">
-          {running && <LoadingSpinner />}
+          {loadingOptions && <TableSkeleton rows={6} columns={6} />}
 
-          {!running && !report && (
-            <p className="py-10 text-center text-sm text-slate">
-              Select a period and account, then click Run Report to view the ledger.
-            </p>
+          {!loadingOptions && running && <TableSkeleton rows={6} columns={6} />}
+
+          {!loadingOptions && !running && error && (
+            <ErrorState
+              message="Failed to load account ledger. Please try again."
+              onRetry={runReport}
+            />
           )}
 
-          {!running && report && (
+          {!loadingOptions && !running && !error && !report && (
+            <EmptyState
+              title="No ledger entries"
+              message="Select a period and account, then click Run Report."
+            />
+          )}
+
+          {!loadingOptions && !running && !error && report && (
             <>
               <p className="mb-4 text-sm font-medium text-navy">
                 Opening Balance: <span className="font-mono">{formatINR(report.openingBalance)}</span>
               </p>
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -201,6 +227,7 @@ export default function AccountLedgerPage() {
                   </tr>
                 </tfoot>
               </table>
+              </div>
             </>
           )}
         </div>

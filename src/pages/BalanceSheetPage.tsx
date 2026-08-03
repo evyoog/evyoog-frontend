@@ -3,7 +3,7 @@ import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { ReportSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getBalanceSheet, getPeriodStatus } from '../api/gl';
@@ -99,6 +99,7 @@ export default function BalanceSheetPage() {
   const [report, setReport] = useState<BalanceSheetReport | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState(true);
   const [running, setRunning] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -124,10 +125,12 @@ export default function BalanceSheetPage() {
   const runReport = async () => {
     if (!user || !periodId) return;
     setRunning(true);
+    setError(false);
     try {
       const data = await getBalanceSheet(user.legalEntityId, periodId);
       setReport(normalizeReport(data));
     } catch {
+      setError(true);
       showToast('Failed to load balance sheet. Please try again.', 'error');
     } finally {
       setRunning(false);
@@ -145,6 +148,7 @@ export default function BalanceSheetPage() {
             <Select
               id="period"
               label="Period"
+              aria-label="Select accounting period"
               value={periodId}
               onChange={(e) => setPeriodId(e.target.value)}
               disabled={loadingPeriods}
@@ -157,26 +161,47 @@ export default function BalanceSheetPage() {
               ))}
             </Select>
           </div>
-          <Button onClick={runReport} loading={running} disabled={!periodId}>
-            Run Report
+          <Button
+            onClick={runReport}
+            loading={running}
+            disabled={running || !periodId}
+            aria-busy={running}
+            aria-label="Run report for selected period"
+          >
+            {running ? 'Loading...' : 'Run Report'}
           </Button>
           {report && (
-            <Button variant="secondary" onClick={() => exportCsv(report)}>
+            <Button
+              variant="secondary"
+              onClick={() => exportCsv(report)}
+              aria-label="Export report as CSV"
+            >
               Export CSV
             </Button>
           )}
         </div>
 
         <div className="mt-6">
-          {running && <LoadingSpinner />}
+          {loadingPeriods && <ReportSkeleton />}
 
-          {!running && !report && (
-            <p className="py-10 text-center text-sm text-slate">
-              Select a period and click Run Report to view the balance sheet.
-            </p>
+          {!loadingPeriods && running && <ReportSkeleton />}
+
+          {!loadingPeriods && !running && error && (
+            <ErrorState
+              message="Failed to load balance sheet data. Please try again."
+              onRetry={runReport}
+            />
           )}
 
-          {!running && report && (
+          {!loadingPeriods && !running && !error && !report && (
+            <EmptyState
+              title="No balance sheet data"
+              message="Select a period and click Run Report."
+            />
+          )}
+
+          {!loadingPeriods && !running && !error && report && (
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -213,6 +238,7 @@ export default function BalanceSheetPage() {
                 </tr>
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </Card>
