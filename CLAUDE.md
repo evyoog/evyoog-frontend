@@ -115,3 +115,8 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - lodash is NOT installed — use native debounce pattern (setTimeout/clearTimeout)
 - usePermission hook is dead code — use hasPermission() directly
 - Chart of Accounts already had a working 300ms debounce (non-lodash) — left untouched
+
+## P1 Retrofit Layer 3 deviations (August 2026)
+- lodash is NOT installed — use native debounce pattern (setTimeout/clearTimeout)
+- usePermission hook is dead code — use hasPermission() directly
+- Chart of Accounts already had a working 300ms debounce (non-lodash) — left untouched
