@@ -110,3 +110,8 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Permission-gated EmptyState actions use the existing `hasPermission('code')`
   pattern from useAuth() (the codebase's real convention) — NOT the unused
   src/hooks/usePermission.ts hook, which has zero call sites.
+
+## P1 Retrofit Layer 3 deviations (August 2026)
+- lodash is NOT installed — use native debounce pattern (setTimeout/clearTimeout)
+- usePermission hook is dead code — use hasPermission() directly
+- Chart of Accounts already had a working 300ms debounce (non-lodash) — left untouched
