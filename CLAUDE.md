@@ -120,3 +120,31 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - lodash is NOT installed — use native debounce pattern (setTimeout/clearTimeout)
 - usePermission hook is dead code — use hasPermission() directly
 - Chart of Accounts already had a working 300ms debounce (non-lodash) — left untouched
+
+## P1 Retrofit Layer 4 — Journal Entry (August 2026) deviations
+- JournalEntryPage is create-only (route /journals/new) — there is no
+  getJournalById/postJournal/reverseJournal API and no /journals/:id route.
+  So two spec items don't apply and were skipped rather than faked:
+  - No "immutable POSTED/REVERSED/CANCELLED" banner or Reverse Journal button
+    (no such journal state ever reaches this page).
+  - "FormSkeleton on journal load" was reinterpreted as FormSkeleton over the
+    existing `loadingLookups` state (sources/categories/accounts fetch), the
+    closest real loading state this page has, instead of a nonexistent
+    edit-mode journal fetch.
+- Inline field errors reuse the existing `error` prop already built into
+  Input.tsx/Select.tsx (renders message + aria-invalid/aria-describedby)
+  rather than hand-rolled `<p role="alert">` blocks per field.
+- Required-field asterisk rendering was added directly to the shared
+  Input.tsx/Select.tsx label (`required` prop now renders a red `*`) instead
+  of one-off markup in JournalEntryPage, since no page previously relied on
+  `required` for anything but native HTML validation. Benefits all forms.
+- No React Router `useBlocker` — App.tsx uses `<BrowserRouter>`, not a data
+  router (`createBrowserRouter`), so `useBlocker` isn't available. Unsaved-
+  changes protection is `window.onbeforeunload` only, per the spec's documented
+  fallback. Note this only fires on real browser unload/refresh, not on
+  in-app `<Link>`/`navigate()` clicks (e.g. sidebar nav) — a known limitation
+  of the onbeforeunload-only approach.
+- GL Date "must be within open period" validates against the month/year of
+  the currently OPEN period from getPeriodStatus() (PeriodStatus has no
+  explicit start/end date fields, only `periodName` like "AUG-2026") — range
+  is derived as the first/last calendar day of that month.

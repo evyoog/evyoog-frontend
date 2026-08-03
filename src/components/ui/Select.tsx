@@ -19,6 +19,12 @@ export default function Select({
       {label && (
         <label htmlFor={id} className="text-xs font-medium uppercase tracking-wide text-slate">
           {label}
+          {required && (
+            <span className="text-red-500" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          )}
         </label>
       )}
       <select
