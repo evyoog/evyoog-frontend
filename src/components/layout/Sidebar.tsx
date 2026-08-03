@@ -30,7 +30,7 @@ const adminNavItems: NavItem[] = [
   { label: 'Approval Policy', to: '/approval-policy', permission: 'gl:approval-policy:view' },
 ];
 
-function NavItemLink({ item }: { item: NavItem }) {
+function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
   const { hasPermission } = useAuth();
   const allowed = item.permission ? hasPermission(item.permission) : true;
   if (!allowed) return null;
@@ -38,6 +38,7 @@ function NavItemLink({ item }: { item: NavItem }) {
   return (
     <NavLink
       to={item.to}
+      onClick={onNavigate}
       className={({ isActive }) =>
         `block border-l-4 px-4 py-2.5 text-sm transition-colors ${
           isActive
@@ -51,7 +52,12 @@ function NavItemLink({ item }: { item: NavItem }) {
   );
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const { hasPermission } = useAuth();
   const showSetupSection = setupNavItems.some(
     (item) => !item.permission || hasPermission(item.permission),
@@ -61,13 +67,17 @@ export default function Sidebar() {
   );
 
   return (
-    <aside className="flex h-screen w-60 flex-shrink-0 flex-col bg-navy">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 flex h-screen w-60 flex-shrink-0 flex-col bg-navy transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       <div className="px-4 py-5">
         <span className="text-lg font-bold text-white">eVyoog ERP</span>
       </div>
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto border-t border-white/10 pt-3">
         {topNavItems.map((item) => (
-          <NavItemLink key={item.to} item={item} />
+          <NavItemLink key={item.to} item={item} onNavigate={onClose} />
         ))}
         {showSetupSection && (
           <>
@@ -75,7 +85,7 @@ export default function Sidebar() {
               Setup
             </div>
             {setupNavItems.map((item) => (
-              <NavItemLink key={item.to} item={item} />
+              <NavItemLink key={item.to} item={item} onNavigate={onClose} />
             ))}
           </>
         )}
@@ -85,14 +95,17 @@ export default function Sidebar() {
               Admin
             </div>
             {adminNavItems.map((item) => (
-              <NavItemLink key={item.to} item={item} />
+              <NavItemLink key={item.to} item={item} onNavigate={onClose} />
             ))}
           </>
         )}
       </nav>
       <div className="border-t border-white/10 py-3">
-        <NavItemLink item={{ label: 'Settings', to: '/settings' }} />
-        <NavItemLink item={{ label: 'Change Password', to: '/change-password' }} />
+        <NavItemLink item={{ label: 'Settings', to: '/settings' }} onNavigate={onClose} />
+        <NavItemLink
+          item={{ label: 'Change Password', to: '/change-password' }}
+          onNavigate={onClose}
+        />
       </div>
     </aside>
   );

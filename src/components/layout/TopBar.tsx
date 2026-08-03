@@ -7,9 +7,11 @@ import Button from '../ui/Button';
 
 interface TopBarProps {
   breadcrumb: string;
+  onMenuClick?: () => void;
+  isMobileMenuOpen?: boolean;
 }
 
-export default function TopBar({ breadcrumb }: TopBarProps) {
+export default function TopBar({ breadcrumb, onMenuClick, isMobileMenuOpen }: TopBarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null | undefined>(undefined);
@@ -38,8 +40,23 @@ export default function TopBar({ breadcrumb }: TopBarProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-white px-6">
-      <span className="text-sm font-medium text-slate">{breadcrumb}</span>
+    <header className="flex h-16 items-center justify-between border-b border-border bg-white px-4 md:px-6">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Toggle navigation menu"
+          aria-expanded={isMobileMenuOpen}
+          className="flex h-11 w-11 items-center justify-center rounded-md text-navy hover:bg-offwhite md:hidden"
+        >
+          <span className="flex flex-col gap-1">
+            <span className="h-0.5 w-5 bg-navy" />
+            <span className="h-0.5 w-5 bg-navy" />
+            <span className="h-0.5 w-5 bg-navy" />
+          </span>
+        </button>
+        <span className="text-sm font-medium text-slate">{breadcrumb}</span>
+      </div>
       <div className="flex items-center gap-4">
         {openPeriod !== undefined &&
           (openPeriod ? (
