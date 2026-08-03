@@ -148,3 +148,8 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   the currently OPEN period from getPeriodStatus() (PeriodStatus has no
   explicit start/end date fields, only `periodName` like "AUG-2026") — range
   is derived as the first/last calendar day of that month.
+
+## P1 Retrofit Layer 4 deviations (August 2026)
+- JournalEntryPage is create-only — no journal-by-id fetch, no POSTED/immutable banner
+- useBlocker not available (BrowserRouter) — unsaved changes uses window.onbeforeunload only
+- Input.tsx and Select.tsx updated to support required prop → asterisk display
