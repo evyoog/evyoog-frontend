@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import UserRolesPanel from '../components/UserRolesPanel';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -70,6 +70,7 @@ export default function UserManagementPage() {
   const [userRoles, setUserRoles] = useState<Record<string, UserRoleAssignment[]>>({});
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState<AddUserFormState>(EMPTY_ADD_FORM);
@@ -91,6 +92,7 @@ export default function UserManagementPage() {
   async function load() {
     if (!user) return;
     setLoading(true);
+    setError(false);
     try {
       const [usersData, rolesData] = await Promise.all([
         listUsers(user.legalEntityId),
@@ -112,6 +114,7 @@ export default function UserManagementPage() {
       );
       setUserRoles(Object.fromEntries(entries));
     } catch {
+      setError(true);
       showToast('Failed to load users.', 'error');
     } finally {
       setLoading(false);
@@ -216,43 +219,57 @@ export default function UserManagementPage() {
             Manage users and role assignments for Orbinox Valves India Pvt Ltd
           </p>
         </div>
-        {canCreate && <Button onClick={openAdd}>Add User</Button>}
+        {canCreate && (
+          <Button onClick={openAdd} aria-label="Add new user">
+            Add User
+          </Button>
+        )}
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Total Users</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Active</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Inactive</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount - activeCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Must Change Password</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{mustChangeCount}</p>
-        </Card>
-      </div>
+      {loading && (
+        <div className="mt-6">
+          <CardSkeleton count={4} />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 grid grid-cols-4 gap-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Total Users</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Active</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Inactive</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount - activeCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Must Change Password</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{mustChangeCount}</p>
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-6">
-        {loading && <LoadingSpinner />}
+        {loading && <TableSkeleton rows={5} columns={7} />}
 
-        {!loading && users.length === 0 && (
-          <div className="py-10 text-center">
-            <p className="text-sm text-slate">No users found.</p>
-            {canCreate && (
-              <Button className="mt-3" onClick={openAdd}>
-                Add User
-              </Button>
-            )}
-          </div>
+        {!loading && error && (
+          <ErrorState message="Failed to load users. Please try again." onRetry={load} />
         )}
 
-        {!loading && users.length > 0 && (
+        {!loading && !error && users.length === 0 && (
+          <EmptyState
+            title="No users found"
+            message="Add users to give them access to eVyoog ERP."
+            action={canCreate ? { label: 'Add User', onClick: openAdd } : undefined}
+          />
+        )}
+
+        {!loading && !error && users.length > 0 && (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -363,6 +380,7 @@ export default function UserManagementPage() {
                           variant="secondary"
                           className="px-2 py-1 text-xs"
                           onClick={() => setRolesPanelUser(u)}
+                          aria-label={`Edit roles for ${u.fullName}`}
                         >
                           Edit Roles
                         </Button>
@@ -372,6 +390,7 @@ export default function UserManagementPage() {
                               variant="secondary"
                               className="px-2 py-1 text-xs"
                               onClick={() => openReset(u)}
+                              aria-label={`Reset password for ${u.fullName}`}
                             >
                               Reset Password
                             </Button>
@@ -381,6 +400,7 @@ export default function UserManagementPage() {
                                 className="px-2 py-1 text-xs"
                                 disabled={actingId === u.id}
                                 onClick={() => setConfirmId(u.id)}
+                                aria-label={`Deactivate ${u.fullName}`}
                               >
                                 Deactivate
                               </Button>
@@ -394,6 +414,7 @@ export default function UserManagementPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

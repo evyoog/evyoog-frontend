@@ -95,3 +95,18 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   Branch on error.response.data.code: INVALID_CURRENT_PASSWORD | WEAK_PASSWORD
 - clearMustChangePwd restored in AuthContext — clears mustChangePwd flag after success
 - Dashboard amber banner updated with "Change Password →" React Router Link
+
+## P1 Retrofit Layer 3 — Listing Screens (August 2026) deviations
+- lodash is NOT installed in this project (no lodash/lodash-es in package.json).
+  Did not add it as a new dependency. ChartOfAccountsPage already had a working
+  300ms debounce via useEffect+setTimeout (no lodash) — left as-is, no changes needed.
+- JournalListingPage and UserManagementPage have no free-text search input in the
+  original code, so the "debounce search input" requirement was N/A for both —
+  did not add a new search feature (out of scope for a UI-states-only retrofit).
+- JournalListingPage has no summary/stat cards — CardSkeleton was skipped there
+  (TableSkeleton only). All other 6 listing screens use CardSkeleton(count=4).
+- PeriodManagementPage: openedAt/closedAt/lockedAt now use formatIST()
+  (was formatDateTime()) per the Layer 3 spec.
+- Permission-gated EmptyState actions use the existing `hasPermission('code')`
+  pattern from useAuth() (the codebase's real convention) — NOT the unused
+  src/hooks/usePermission.ts hook, which has zero call sites.

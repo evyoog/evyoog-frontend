@@ -3,7 +3,7 @@ import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
@@ -17,7 +17,7 @@ import {
   openPeriod,
 } from '../api/gl';
 import type { AccountingCalendar, AccountingPeriod, Ledger, PeriodRow, PeriodStatusValue } from '../types';
-import { formatDateTime } from '../utils/format';
+import { formatIST } from '../utils/format';
 
 type DisplayStatus = PeriodStatusValue | 'NOT_INITIALISED';
 
@@ -47,7 +47,7 @@ function StatusBadge({ row }: { row: PeriodRow }) {
   const status = displayStatus(row);
   const title =
     status === 'LOCKED' && row.status
-      ? `Locked by ${row.status.lockedBy ?? '—'} at ${formatDateTime(row.status.lockedAt)}`
+      ? `Locked by ${row.status.lockedBy ?? '—'} at ${formatIST(row.status.lockedAt)}`
       : undefined;
   return (
     <span
@@ -91,6 +91,7 @@ export default function PeriodManagementPage() {
   const [calendar, setCalendar] = useState<AccountingCalendar | null>(null);
   const [rows, setRows] = useState<PeriodRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const [initialiseId, setInitialiseId] = useState<string | null>(null);
   const [confirmActionId, setConfirmActionId] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export default function PeriodManagementPage() {
   async function load() {
     if (!user) return;
     setLoading(true);
+    setError(false);
     try {
       const ledgers = await listLedgers(user.legalEntityId);
       const primaryLedger = ledgers[0] ?? null;
@@ -124,6 +126,7 @@ export default function PeriodManagementPage() {
         .map((period) => ({ period, status: statusByPeriodId.get(period.id) ?? null }));
       setRows(merged);
     } catch {
+      setError(true);
       showToast('Failed to load period data.', 'error');
     } finally {
       setLoading(false);
@@ -211,20 +214,30 @@ export default function PeriodManagementPage() {
       </p>
 
       {loading && (
+        <div className="mt-6 flex flex-col gap-6">
+          <CardSkeleton count={4} />
+          <Card>
+            <TableSkeleton rows={12} columns={8} />
+          </Card>
+        </div>
+      )}
+
+      {!loading && error && (
         <Card className="mt-6">
-          <LoadingSpinner />
+          <ErrorState message="Failed to load period data. Please try again." onRetry={load} />
         </Card>
       )}
 
-      {!loading && rows.length === 0 && (
+      {!loading && !error && rows.length === 0 && (
         <Card className="mt-6">
-          <p className="py-10 text-center text-sm text-slate">
-            No accounting calendar found for this legal entity.
-          </p>
+          <EmptyState
+            title="No periods found"
+            message="No accounting periods have been generated for this fiscal year."
+          />
         </Card>
       )}
 
-      {!loading && rows.length > 0 && (
+      {!loading && !error && rows.length > 0 && (
         <>
           <div className="mt-6 flex gap-3">
             {quarters.map((q) => (
@@ -233,6 +246,7 @@ export default function PeriodManagementPage() {
           </div>
 
           <Card className="mt-6">
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -262,9 +276,9 @@ export default function PeriodManagementPage() {
                         <StatusBadge row={row} />
                       </td>
                       <td className="py-2 pr-2">{row.status?.openedBy ?? '—'}</td>
-                      <td className="py-2 pr-2">{formatDateTime(row.status?.openedAt)}</td>
+                      <td className="py-2 pr-2">{formatIST(row.status?.openedAt)}</td>
                       <td className="py-2 pr-2">{row.status?.closedBy ?? '—'}</td>
-                      <td className="py-2 pr-2">{formatDateTime(row.status?.closedAt)}</td>
+                      <td className="py-2 pr-2">{formatIST(row.status?.closedAt)}</td>
                       <td className="py-2 pr-2">
                         {!canManage ? null : status === 'NOT_INITIALISED' ? (
                           initialiseId === row.period.id ? (
@@ -294,6 +308,7 @@ export default function PeriodManagementPage() {
                               className="px-2 py-1 text-xs"
                               disabled={busy}
                               onClick={() => setInitialiseId(row.period.id)}
+                              aria-label={`Initialise ${row.period.name}`}
                             >
                               Initialise
                             </Button>
@@ -325,6 +340,7 @@ export default function PeriodManagementPage() {
                               className="px-2 py-1 text-xs"
                               disabled={busy}
                               onClick={() => row.status && setConfirmActionId(row.status.id)}
+                              aria-label={`Lock ${row.period.name}`}
                             >
                               Lock
                             </Button>
@@ -335,6 +351,7 @@ export default function PeriodManagementPage() {
                             className="px-2 py-1 text-xs"
                             disabled={busy}
                             onClick={() => setCloseTarget(row)}
+                            aria-label={`Close ${row.period.name}`}
                           >
                             Close
                           </Button>
@@ -365,6 +382,7 @@ export default function PeriodManagementPage() {
                               className="px-2 py-1 text-xs"
                               disabled={busy}
                               onClick={() => row.status && setConfirmActionId(row.status.id)}
+                              aria-label={`Open ${row.period.name}`}
                             >
                               Open
                             </Button>
@@ -376,6 +394,7 @@ export default function PeriodManagementPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </Card>
         </>
       )}

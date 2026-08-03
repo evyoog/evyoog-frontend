@@ -4,7 +4,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { createRole, listRoles, updateRole } from '../api/users';
@@ -57,6 +57,7 @@ export default function RoleManagementPage() {
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
@@ -71,10 +72,12 @@ export default function RoleManagementPage() {
   async function load() {
     if (!user) return;
     setLoading(true);
+    setError(false);
     try {
       const data = await listRoles(user.legalEntityId);
       setRoles(Array.isArray(data) ? data : []);
     } catch {
+      setError(true);
       showToast('Failed to load roles.', 'error');
     } finally {
       setLoading(false);
@@ -193,36 +196,57 @@ export default function RoleManagementPage() {
           <h1 className="text-2xl font-bold text-navy">Role Management</h1>
           <p className="mt-1 text-sm text-slate">Define roles and permission sets</p>
         </div>
-        {canCreate && <Button onClick={openAdd}>Add Role</Button>}
+        {canCreate && (
+          <Button onClick={openAdd} aria-label="Add new role">
+            Add Role
+          </Button>
+        )}
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Total Roles</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">System Roles</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{systemCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Custom Roles</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount - systemCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Active</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
-        </Card>
-      </div>
+      {loading && (
+        <div className="mt-6">
+          <CardSkeleton count={4} />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 grid grid-cols-4 gap-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Total Roles</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">System Roles</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{systemCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Custom Roles</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount - systemCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Active</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-6">
-        {loading && <LoadingSpinner />}
+        {loading && <TableSkeleton rows={6} columns={5} />}
 
-        {!loading && roles.length === 0 && (
-          <p className="py-10 text-center text-sm text-slate">No roles found.</p>
+        {!loading && error && (
+          <ErrorState message="Failed to load roles. Please try again." onRetry={load} />
         )}
 
-        {!loading && roles.length > 0 && (
+        {!loading && !error && roles.length === 0 && (
+          <EmptyState
+            title="No roles found"
+            message="Define roles to control what users can access in eVyoog ERP."
+            action={canCreate ? { label: 'Add Role', onClick: openAdd } : undefined}
+          />
+        )}
+
+        {!loading && !error && roles.length > 0 && (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -261,6 +285,7 @@ export default function RoleManagementPage() {
                           variant="secondary"
                           className="px-2 py-1 text-xs"
                           onClick={() => openEdit(r)}
+                          aria-label={`${canEdit && !r.isSystemRole ? 'Edit' : 'View'} permissions for ${r.name}`}
                         >
                           {canEdit && !r.isSystemRole ? 'Edit' : 'View'} Permissions
                         </Button>
@@ -293,6 +318,7 @@ export default function RoleManagementPage() {
                               className="px-2 py-1 text-xs"
                               disabled={actingId === r.id}
                               onClick={() => setConfirmId(r.id)}
+                              aria-label={`Deactivate ${r.name}`}
                             >
                               Deactivate
                             </Button>
@@ -321,6 +347,7 @@ export default function RoleManagementPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

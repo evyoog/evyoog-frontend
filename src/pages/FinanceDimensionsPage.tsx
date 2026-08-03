@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import DimensionValuesPanel from '../components/DimensionValuesPanel';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -97,6 +97,7 @@ export default function FinanceDimensionsPage() {
   const [ledgerId, setLedgerId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<FinanceDimension[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<FinanceDimension | null>(null);
@@ -108,10 +109,12 @@ export default function FinanceDimensionsPage() {
 
   async function load(lid: string) {
     setLoading(true);
+    setError(false);
     try {
       const data = await listFinanceDimensions(lid);
       setDimensions(Array.isArray(data) ? data : []);
     } catch {
+      setError(true);
       showToast('Failed to load finance dimensions.', 'error');
     } finally {
       setLoading(false);
@@ -208,38 +211,60 @@ export default function FinanceDimensionsPage() {
           <h1 className="text-2xl font-bold text-navy">Finance Dimensions</h1>
           <p className="mt-1 text-sm text-slate">Dimensions defined for Primary Ledger</p>
         </div>
-        {canManage && <Button onClick={openAdd}>Add Dimension</Button>}
+        {canManage && (
+          <Button onClick={openAdd} aria-label="Add new dimension">
+            Add Dimension
+          </Button>
+        )}
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Total Dimensions</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Required</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{requiredCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Optional</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount - requiredCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Active</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
-        </Card>
-      </div>
+      {loading && (
+        <div className="mt-6">
+          <CardSkeleton count={4} />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 grid grid-cols-4 gap-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Total Dimensions</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Required</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{requiredCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Optional</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount - requiredCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Active</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-6">
-        {loading && <LoadingSpinner />}
+        {loading && <TableSkeleton rows={3} columns={7} />}
 
-        {!loading && dimensions.length === 0 && (
-          <p className="py-10 text-center text-sm text-slate">
-            No finance dimensions found for this ledger.
-          </p>
+        {!loading && error && (
+          <ErrorState
+            message="Failed to load finance dimensions. Please try again."
+            onRetry={() => ledgerId && load(ledgerId)}
+          />
         )}
 
-        {!loading && dimensions.length > 0 && (
+        {!loading && !error && dimensions.length === 0 && (
+          <EmptyState
+            title="No finance dimensions defined"
+            message="Finance dimensions define the segments of your account combination."
+            action={canManage ? { label: 'Add Dimension', onClick: openAdd } : undefined}
+          />
+        )}
+
+        {!loading && !error && dimensions.length > 0 && (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -279,6 +304,7 @@ export default function FinanceDimensionsPage() {
                               variant="secondary"
                               className="px-2 py-1 text-xs"
                               onClick={() => setValuesDimension(d)}
+                              aria-label={`Manage values for ${d.name}`}
                             >
                               Manage Values
                             </Button>
@@ -288,6 +314,7 @@ export default function FinanceDimensionsPage() {
                               variant="secondary"
                               className="px-2 py-1 text-xs"
                               onClick={() => openEdit(d)}
+                              aria-label={`Edit ${d.name}`}
                             >
                               Edit
                             </Button>
@@ -299,6 +326,7 @@ export default function FinanceDimensionsPage() {
                 ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 

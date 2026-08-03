@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import Badge from '../components/ui/Badge';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { listJournals, getPeriodStatus } from '../api/gl';
@@ -34,6 +34,7 @@ export default function JournalListingPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [last, setLast] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,37 +45,33 @@ export default function JournalListingPage() {
       });
   }, [user]);
 
-  useEffect(() => {
+  const loadJournals = useCallback(async () => {
     if (!user) return;
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const result = await listJournals({
-          legalEntityId: user!.legalEntityId,
-          page,
-          size: PAGE_SIZE,
-          status: appliedStatus !== 'ALL' ? appliedStatus : undefined,
-          periodId: appliedPeriod || undefined,
-        });
-        if (cancelled) return;
-        setJournals(Array.isArray(result?.content) ? result.content : []);
-        setTotalPages(result?.totalPages ?? 0);
-        setTotalElements(result?.totalElements ?? 0);
-        setLast(result?.last ?? true);
-      } catch {
-        if (!cancelled) showToast('Failed to load journals. Please try again.', 'error');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    setLoading(true);
+    setError(false);
+    try {
+      const result = await listJournals({
+        legalEntityId: user.legalEntityId,
+        page,
+        size: PAGE_SIZE,
+        status: appliedStatus !== 'ALL' ? appliedStatus : undefined,
+        periodId: appliedPeriod || undefined,
+      });
+      setJournals(Array.isArray(result?.content) ? result.content : []);
+      setTotalPages(result?.totalPages ?? 0);
+      setTotalElements(result?.totalElements ?? 0);
+      setLast(result?.last ?? true);
+    } catch {
+      setError(true);
+      showToast('Failed to load journals. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
+  }, [user, page, appliedStatus, appliedPeriod, showToast]);
 
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, page, appliedStatus, appliedPeriod]);
+  useEffect(() => {
+    loadJournals();
+  }, [loadJournals]);
 
   const handleSearch = () => {
     setPage(0);
@@ -101,6 +98,7 @@ export default function JournalListingPage() {
             <Select
               id="period-filter"
               label="Period"
+              aria-label="Filter by period"
               value={periodFilter}
               onChange={(e) => setPeriodFilter(e.target.value)}
             >
@@ -116,6 +114,7 @@ export default function JournalListingPage() {
             <Select
               id="status-filter"
               label="Status"
+              aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -126,23 +125,32 @@ export default function JournalListingPage() {
               ))}
             </Select>
           </div>
-          <Button onClick={handleSearch}>Search</Button>
+          <Button onClick={handleSearch} aria-label="Search journals">
+            Search
+          </Button>
           <Button variant="secondary" onClick={handleClear}>
             Clear
           </Button>
         </div>
 
         <div className="mt-6">
-          {loading && <LoadingSpinner />}
+          {loading && <TableSkeleton rows={8} columns={7} />}
 
-          {!loading && journals.length === 0 && (
-            <p className="py-10 text-center text-sm text-slate">
-              No journals found. Try adjusting your filters.
-            </p>
+          {!loading && error && (
+            <ErrorState message="Failed to load journals. Please try again." onRetry={loadJournals} />
           )}
 
-          {!loading && journals.length > 0 && (
+          {!loading && !error && journals.length === 0 && (
+            <EmptyState
+              title="No journals found"
+              message="Try adjusting your filters or create a new journal entry."
+              action={{ label: 'New Journal Entry', href: '/journal-entry' }}
+            />
+          )}
+
+          {!loading && !error && journals.length > 0 && (
             <>
+              <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -173,6 +181,7 @@ export default function JournalListingPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               <div className="mt-4 flex items-center justify-between">
                 <p className="text-xs text-slate">{totalElements} journal(s) found</p>

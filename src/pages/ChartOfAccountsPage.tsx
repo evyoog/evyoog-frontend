@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
@@ -116,6 +116,7 @@ export default function ChartOfAccountsPage() {
   const [legalEntityId, setLegalEntityId] = useState<string | null>(null);
   const [ledgerId, setLedgerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [baseAccounts, setBaseAccounts] = useState<Account[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [postableCount, setPostableCount] = useState(0);
@@ -143,6 +144,7 @@ export default function ChartOfAccountsPage() {
 
   async function load(leId: string, lid: string) {
     setLoading(true);
+    setError(false);
     try {
       const data = await getChartOfAccounts(leId, lid);
       setBaseAccounts(Array.isArray(data.accounts) ? data.accounts : []);
@@ -150,6 +152,7 @@ export default function ChartOfAccountsPage() {
       setPostableCount(data.postableCount ?? 0);
       setSummaryCount(data.summaryCount ?? 0);
     } catch {
+      setError(true);
       showToast('Failed to load chart of accounts.', 'error');
     } finally {
       setLoading(false);
@@ -343,32 +346,48 @@ export default function ChartOfAccountsPage() {
         </div>
         <div className="flex gap-3">
           {canCreate && (
-            <Button variant="secondary" onClick={() => setShowImportModal(true)}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowImportModal(true)}
+              aria-label="Import chart of accounts from Excel"
+            >
               Import from Excel
             </Button>
           )}
-          {canCreate && <Button onClick={openAdd}>Add Account</Button>}
+          {canCreate && (
+            <Button onClick={openAdd} aria-label="Add new account">
+              Add Account
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Total Accounts</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Postable</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{postableCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Summary</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{summaryCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Active</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
-        </Card>
-      </div>
+      {loading && (
+        <div className="mt-6">
+          <CardSkeleton count={4} />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 grid grid-cols-4 gap-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Total Accounts</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Postable</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{postableCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Summary</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{summaryCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Active</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-6">
         <div className="flex items-end gap-3">
@@ -376,6 +395,7 @@ export default function ChartOfAccountsPage() {
             <Input
               id="coa-search"
               label="Search"
+              aria-label="Search chart of accounts"
               placeholder="Search by code or name"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -385,6 +405,7 @@ export default function ChartOfAccountsPage() {
             <Select
               id="coa-qualifier-filter"
               label="Qualifier"
+              aria-label="Filter by qualifier"
               value={qualifierFilter}
               onChange={(e) => setQualifierFilter(e.target.value)}
             >
@@ -400,6 +421,7 @@ export default function ChartOfAccountsPage() {
             <Select
               id="coa-status-filter"
               label="Status"
+              aria-label="Filter by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -411,31 +433,37 @@ export default function ChartOfAccountsPage() {
         </div>
 
         <div className="mt-6">
-          {loading && <LoadingSpinner />}
+          {loading && <TableSkeleton rows={8} columns={8} />}
 
-          {noAccountsAtAll && (
-            <div className="py-10 text-center">
-              <p className="text-sm text-slate">
-                No accounts found. Add your first account or import from Excel.
-              </p>
-              {canCreate && (
-                <div className="mt-4 flex justify-center gap-3">
-                  <Button onClick={openAdd}>Add Account</Button>
-                  <Button variant="secondary" onClick={() => setShowImportModal(true)}>
-                    Import from Excel
-                  </Button>
-                </div>
-              )}
-            </div>
+          {!loading && error && (
+            <ErrorState
+              message="Failed to load chart of accounts. Please try again."
+              onRetry={() => legalEntityId && ledgerId && load(legalEntityId, ledgerId)}
+            />
           )}
 
-          {!loading && !noAccountsAtAll && displayedAccounts.length === 0 && (
-            <p className="py-10 text-center text-sm text-slate">
-              No accounts match your filters.
-            </p>
+          {!loading && !error && noAccountsAtAll && (
+            <EmptyState
+              title="No accounts found"
+              message="Add accounts to your chart of accounts or import from Excel."
+              action={canCreate ? { label: 'Add Account', onClick: openAdd } : undefined}
+              secondaryAction={
+                canCreate
+                  ? { label: 'Import from Excel', onClick: () => setShowImportModal(true) }
+                  : undefined
+              }
+            />
           )}
 
-          {!loading && displayedAccounts.length > 0 && (
+          {!loading && !error && !noAccountsAtAll && displayedAccounts.length === 0 && (
+            <EmptyState
+              title="No accounts match your filters"
+              message="Try adjusting your search or filters."
+            />
+          )}
+
+          {!loading && !error && displayedAccounts.length > 0 && (
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -477,6 +505,7 @@ export default function ChartOfAccountsPage() {
                               variant="secondary"
                               className="px-2 py-1 text-xs"
                               onClick={() => openEdit(a)}
+                              aria-label={`Edit ${a.name}`}
                             >
                               Edit
                             </Button>
@@ -508,6 +537,7 @@ export default function ChartOfAccountsPage() {
                                 className="px-2 py-1 text-xs"
                                 disabled={actingId === a.id}
                                 onClick={() => setConfirmId(a.id)}
+                                aria-label={`Deactivate ${a.name}`}
                               >
                                 Deactivate
                               </Button>
@@ -520,6 +550,7 @@ export default function ChartOfAccountsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </Card>

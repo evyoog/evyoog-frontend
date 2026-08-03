@@ -4,7 +4,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
 import Modal from '../components/ui/Modal';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
@@ -67,6 +67,7 @@ export default function ApprovalPolicyPage() {
   const [sources, setSources] = useState<JournalSource[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<ApprovalPolicy | null>(null);
@@ -81,6 +82,7 @@ export default function ApprovalPolicyPage() {
   async function load() {
     if (!user) return;
     setLoading(true);
+    setError(false);
     try {
       const [policiesData, sourcesData, rolesData] = await Promise.all([
         listApprovalPolicies(user.legalEntityId),
@@ -91,6 +93,7 @@ export default function ApprovalPolicyPage() {
       setSources(Array.isArray(sourcesData) ? sourcesData : []);
       setRoles(Array.isArray(rolesData) ? rolesData : []);
     } catch {
+      setError(true);
       showToast('Failed to load approval policies.', 'error');
     } finally {
       setLoading(false);
@@ -204,7 +207,11 @@ export default function ApprovalPolicyPage() {
             Configure journal approval rules for Orbinox Valves India Pvt Ltd
           </p>
         </div>
-        {canManage && <Button onClick={openAdd}>Add Policy</Button>}
+        {canManage && (
+          <Button onClick={openAdd} aria-label="Add new approval policy">
+            Add Policy
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 rounded-md border-l-4 border-l-amber bg-amber-light px-4 py-3 text-sm text-amber">
@@ -213,43 +220,50 @@ export default function ApprovalPolicyPage() {
         acts on it.
       </div>
 
-      <div className="mt-6 grid grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Total Policies</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Requires Approval</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{requiresCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">No Approval Required</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{totalCount - requiresCount}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-slate">Active</p>
-          <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
-        </Card>
-      </div>
+      {loading && (
+        <div className="mt-6">
+          <CardSkeleton count={4} />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6 grid grid-cols-4 gap-4">
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Total Policies</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Requires Approval</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{requiresCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">No Approval Required</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{totalCount - requiresCount}</p>
+          </Card>
+          <Card>
+            <p className="text-xs uppercase tracking-wide text-slate">Active</p>
+            <p className="mt-1 text-2xl font-bold text-navy">{activeCount}</p>
+          </Card>
+        </div>
+      )}
 
       <Card className="mt-6">
-        {loading && <LoadingSpinner />}
+        {loading && <TableSkeleton rows={5} columns={6} />}
 
-        {!loading && policies.length === 0 && (
-          <div className="py-10 text-center">
-            <p className="text-sm text-slate">
-              No approval policies configured. Add a policy to require approval for specific
-              journal sources.
-            </p>
-            {canManage && (
-              <Button className="mt-3" onClick={openAdd}>
-                Add Policy
-              </Button>
-            )}
-          </div>
+        {!loading && error && (
+          <ErrorState message="Failed to load approval policies. Please try again." onRetry={load} />
         )}
 
-        {!loading && policies.length > 0 && (
+        {!loading && !error && policies.length === 0 && (
+          <EmptyState
+            title="No approval policies configured"
+            message="Add a policy to require approval for specific journal sources."
+            action={canManage ? { label: 'Add Policy', onClick: openAdd } : undefined}
+          />
+        )}
+
+        {!loading && !error && policies.length > 0 && (
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
@@ -324,6 +338,7 @@ export default function ApprovalPolicyPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
 
