@@ -153,3 +153,14 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - JournalEntryPage is create-only — no journal-by-id fetch, no POSTED/immutable banner
 - useBlocker not available (BrowserRouter) — unsaved changes uses window.onbeforeunload only
 - Input.tsx and Select.tsx updated to support required prop → asterisk display
+
+## P1 Retrofit Layer 4 deviations (August 2026)
+- JournalEntryPage is create-only — no journal-by-id fetch, no POSTED/immutable banner
+- useBlocker not available (BrowserRouter) — unsaved changes uses window.onbeforeunload only
+- Input.tsx and Select.tsx updated to support required prop → asterisk display
+
+## P1 Retrofit Layer 5 (August 2026)
+- accountCombination added to AccountLedgerLine type (optional Record<string,string>)
+- Backend fix required: AccountLedgerEntry DTO now includes accountCombination field
+- Asset accounts show Cost Centre only (no Product) — correct behavior
+- Revenue accounts show Cost Centre + Product — correct behavior
