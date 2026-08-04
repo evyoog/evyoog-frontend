@@ -164,3 +164,10 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Backend fix required: AccountLedgerEntry DTO now includes accountCombination field
 - Asset accounts show Cost Centre only (no Product) — correct behavior
 - Revenue accounts show Cost Centre + Product — correct behavior
+
+## P1 Retrofit Sprint Complete (August 2026)
+- All 16 screens meet P1 Frontend Production Standard
+- Layers 1-7 applied: shared components, report screens, listing screens,
+  Journal Entry, WHO columns, Login, Dashboard
+- SkeletonLoader, ErrorState, EmptyState available in src/components/ui/index.ts
+- formatIST available in src/utils/format.ts
