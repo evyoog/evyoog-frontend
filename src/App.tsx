@@ -19,6 +19,7 @@ import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import EnterpriseStructurePage from './pages/EnterpriseStructurePage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -103,6 +104,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <PeriodManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/enterprise"
+              element={
+                <ProtectedRoute>
+                  <EnterpriseStructurePage />
                 </ProtectedRoute>
               }
             />

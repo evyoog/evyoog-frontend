@@ -465,6 +465,30 @@ export interface CashFlowSection {
   totalAmount: number;
 }
 
+export interface LegalEntity {
+  id: string;
+  businessGroupId: string;
+  code: string;
+  name: string;
+  accountingStandard: string;
+  tan: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessUnit {
+  id: string;
+  legalEntityId: string;
+  code: string;
+  name: string;
+  gstin: string | null;
+  stateCode: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CashFlowReport {
   legalEntityId: string;
   legalEntityName: string;

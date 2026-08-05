@@ -20,6 +20,7 @@ const topNavItems: NavItem[] = [
 ];
 
 const setupNavItems: NavItem[] = [
+  { label: 'Enterprise Structure', to: '/enterprise', permission: 'gl:enterprise:view' },
   { label: 'Finance Dimensions', to: '/finance-dimensions', permission: 'gl:dimension:view' },
   { label: 'Chart of Accounts', to: '/chart-of-accounts', permission: 'gl:accounts:view' },
 ];

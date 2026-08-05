@@ -6,6 +6,7 @@ import type {
   AccountLedgerReport,
   ApiResponse,
   BalanceSheetReport,
+  BusinessUnit,
   CashFlowReport,
   ChartOfAccountsResponse,
   CoaImportResult,
@@ -16,6 +17,7 @@ import type {
   JournalCategory,
   JournalSource,
   Ledger,
+  LegalEntity,
   Page,
   PeriodStatus,
   PLBySegmentReport,
@@ -296,6 +298,53 @@ export async function searchDimensionValues(ledgerId: string, code: string) {
   const { data } = await api.get<ApiResponse<DimensionValue[]>>(
     '/api/v1/gl/dimension-values/search',
     { params: { ledgerId, code } },
+  );
+  return data.data;
+}
+
+export async function getLegalEntity(legalEntityId: string) {
+  const { data } = await api.get<ApiResponse<LegalEntity>>(
+    `/api/v1/gl/legal-entities/${legalEntityId}`,
+  );
+  return data.data;
+}
+
+export async function updateLegalEntity(
+  legalEntityId: string,
+  body: { name: string; accountingStandard: string; tan?: string },
+) {
+  const { data } = await api.put<ApiResponse<LegalEntity>>(
+    `/api/v1/gl/legal-entities/${legalEntityId}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function listBusinessUnits(legalEntityId: string) {
+  const { data } = await api.get<ApiResponse<BusinessUnit[]>>('/api/v1/gl/business-units', {
+    params: { legalEntityId },
+  });
+  return data.data;
+}
+
+export async function createBusinessUnit(body: {
+  legalEntityId: string;
+  code: string;
+  name: string;
+  gstin?: string;
+  stateCode?: string;
+}) {
+  const { data } = await api.post<ApiResponse<BusinessUnit>>('/api/v1/gl/business-units', body);
+  return data.data;
+}
+
+export async function updateBusinessUnit(
+  id: string,
+  body: { name: string; gstin?: string; stateCode?: string },
+) {
+  const { data } = await api.patch<ApiResponse<BusinessUnit>>(
+    `/api/v1/gl/business-units/${id}`,
+    body,
   );
   return data.data;
 }
