@@ -14,7 +14,6 @@ const topNavItems: NavItem[] = [
   { label: 'Period Management', to: '/period-management', permission: 'gl:period:view' },
   { label: 'Trial Balance', to: '/trial-balance', permission: 'gl:trial-balance:view' },
   { label: 'P&L Statement', to: '/pl-statement', permission: 'gl:pl:view' },
-  { label: 'P&L by Segment', to: '/pl-by-segment', permission: 'gl:pl:view' },
   { label: 'Balance Sheet', to: '/balance-sheet', permission: 'gl:balance-sheet:view' },
   { label: 'Account Ledger', to: '/account-ledger', permission: 'gl:account-ledger:view' },
   { label: 'Cash Flow', to: '/cash-flow', permission: 'gl:balance-sheet:view' },
