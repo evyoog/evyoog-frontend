@@ -18,6 +18,7 @@ import type {
   Ledger,
   Page,
   PeriodStatus,
+  PLBySegmentReport,
   PLStatementReport,
   TrialBalanceReport,
 } from '../types';
@@ -44,10 +45,31 @@ export async function createJournal(payload: CreateJournalRequest) {
   return data.data;
 }
 
-export async function getTrialBalance(legalEntityId: string, periodId: string) {
+export async function getTrialBalance(
+  legalEntityId: string,
+  periodId: string,
+  costCentre?: string,
+  product?: string,
+) {
+  const params: Record<string, string> = { legalEntityId, periodId };
+  if (costCentre) params.costCentre = costCentre;
+  if (product) params.product = product;
   const { data } = await api.get<ApiResponse<TrialBalanceReport>>(
     '/api/v1/gl/reports/trial-balance',
-    { params: { legalEntityId, periodId } },
+    { params },
+  );
+  return data.data;
+}
+
+export async function getPLBySegment(
+  legalEntityId: string,
+  periodId: string,
+  segmentType: 'COST_CENTRE' | 'PRODUCT',
+  includeZeroBalances?: boolean,
+) {
+  const { data } = await api.get<ApiResponse<PLBySegmentReport>>(
+    '/api/v1/gl/reports/pl-by-segment',
+    { params: { legalEntityId, periodId, segmentType, includeZeroBalances } },
   );
   return data.data;
 }

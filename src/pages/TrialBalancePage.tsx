@@ -6,8 +6,14 @@ import Select from '../components/ui/Select';
 import { TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getTrialBalance, getPeriodStatus } from '../api/gl';
-import type { PeriodStatus, TrialBalanceReport, TrialBalanceRow } from '../types';
+import {
+  getTrialBalance,
+  getPeriodStatus,
+  listLedgers,
+  listFinanceDimensions,
+  listDimensionValues,
+} from '../api/gl';
+import type { DimensionValue, PeriodStatus, TrialBalanceReport, TrialBalanceRow } from '../types';
 import { formatINR } from '../utils/format';
 
 const QUALIFIER_ORDER = ['Assets', 'Liabilities', 'Equity', 'Revenue', 'Expense'];
@@ -90,6 +96,11 @@ export default function TrialBalancePage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState(false);
 
+  const [costCentreFilter, setCostCentreFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [costCentreValues, setCostCentreValues] = useState<DimensionValue[]>([]);
+  const [productValues, setProductValues] = useState<DimensionValue[]>([]);
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -111,12 +122,50 @@ export default function TrialBalancePage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    listLedgers(user.legalEntityId)
+      .then(async (ledgers) => {
+        const ledgerId = ledgers[0]?.id;
+        if (!ledgerId) return;
+        const dims = await listFinanceDimensions(ledgerId);
+        if (cancelled) return;
+        const costCtrDim = dims.find((d) => d.dimensionType === 'COST_CENTRE');
+        const productDim = dims.find((d) => d.dimensionType === 'PRODUCT');
+        if (costCtrDim) {
+          const vals = await listDimensionValues(costCtrDim.id);
+          if (!cancelled) setCostCentreValues(vals.filter((v) => v.isActive));
+        }
+        if (productDim) {
+          const vals = await listDimensionValues(productDim.id);
+          if (!cancelled) setProductValues(vals.filter((v) => v.isActive));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load segment filters.', 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const clearFilters = () => {
+    setCostCentreFilter('');
+    setProductFilter('');
+  };
+
   const runReport = async () => {
     if (!user || !periodId) return;
     setRunning(true);
     setError(false);
     try {
-      const data = await getTrialBalance(user.legalEntityId, periodId);
+      const data = await getTrialBalance(
+        user.legalEntityId,
+        periodId,
+        costCentreFilter || undefined,
+        productFilter || undefined,
+      );
       setReport(normalizeReport(data));
     } catch {
       setError(true);
@@ -172,7 +221,59 @@ export default function TrialBalancePage() {
           )}
         </div>
 
+        {periodId && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="w-56">
+              <Select
+                id="cost-centre-filter"
+                aria-label="Filter by Cost Centre"
+                value={costCentreFilter}
+                onChange={(e) => setCostCentreFilter(e.target.value)}
+              >
+                <option value="">All Cost Centres</option>
+                {costCentreValues.map((v) => (
+                  <option key={v.code} value={v.code}>
+                    {v.name} ({v.code})
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="w-56">
+              <Select
+                id="product-filter"
+                aria-label="Filter by Product"
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+              >
+                <option value="">All Products</option>
+                {productValues.map((v) => (
+                  <option key={v.code} value={v.code}>
+                    {v.name} ({v.code})
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {(costCentreFilter || productFilter) && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-sm text-slate underline"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="mt-6">
+          {(costCentreFilter || productFilter) && report && (
+            <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-700">
+              Filtered by: {costCentreFilter && `Cost Centre: ${costCentreFilter}`}
+              {costCentreFilter && productFilter && ' · '}
+              {productFilter && `Product: ${productFilter}`}
+            </div>
+          )}
+
           {loadingPeriods && <TableSkeleton rows={8} columns={6} />}
 
           {!loadingPeriods && running && <TableSkeleton rows={8} columns={6} />}

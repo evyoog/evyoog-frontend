@@ -9,6 +9,7 @@ import JournalEntryPage from './pages/JournalEntryPage';
 import JournalListingPage from './pages/JournalListingPage';
 import TrialBalancePage from './pages/TrialBalancePage';
 import PLStatementPage from './pages/PLStatementPage';
+import PLBySegmentPage from './pages/PLBySegmentPage';
 import BalanceSheetPage from './pages/BalanceSheetPage';
 import AccountLedgerPage from './pages/AccountLedgerPage';
 import CashFlowPage from './pages/CashFlowPage';
@@ -71,6 +72,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <PLStatementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pl-by-segment"
+              element={
+                <ProtectedRoute>
+                  <PLBySegmentPage />
                 </ProtectedRoute>
               }
             />

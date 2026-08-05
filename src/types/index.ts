@@ -256,6 +256,7 @@ export interface TrialBalanceReport {
   totalDebit: number;
   totalCredit: number;
   isBalanced: boolean;
+  segmentFilters?: { costCentre: string | null; product: string | null };
 }
 
 export type PeriodStatusValue = 'NOT_OPENED' | 'FUTURE_ENTERABLE' | 'OPEN' | 'CLOSED' | 'LOCKED';
@@ -343,6 +344,30 @@ export interface PLStatementReport {
   grossProfit: number;
   netIncome: number;
   isProfitable: boolean;
+}
+
+export interface PLBySegmentLine {
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  segmentAmounts: Record<string, number>;
+  total: number;
+}
+
+export interface PLBySegmentReport {
+  legalEntityId: string;
+  legalEntityName: string;
+  accountingPeriodId: string;
+  periodName: string;
+  fiscalYear: string;
+  segmentType: string;
+  segments: string[];
+  revenueLines: PLBySegmentLine[];
+  expenseLines: PLBySegmentLine[];
+  totalRevenue: Record<string, number>;
+  totalExpenses: Record<string, number>;
+  netIncome: Record<string, number>;
+  generatedAt: string;
 }
 
 export interface Page<T> {
