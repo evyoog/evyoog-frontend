@@ -171,3 +171,11 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   Journal Entry, WHO columns, Login, Dashboard
 - SkeletonLoader, ErrorState, EmptyState available in src/components/ui/index.ts
 - formatIST available in src/utils/format.ts
+
+## Segment Reporting Frontend (August 2026)
+- PLStatementPage.tsx unified — Standard + By Segment view modes
+- PLBySegmentPage.tsx deleted — merged into PLStatementPage
+- /pl-by-segment route removed — use /pl-statement with toggle
+- Trial Balance enhanced with optional costCentre + product filter params
+- Pivot table columns driven dynamically from report.segments[]
+- Zero segment amounts display as "—" not "0.00"
