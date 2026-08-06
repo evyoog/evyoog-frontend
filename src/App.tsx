@@ -15,6 +15,7 @@ import CashFlowPage from './pages/CashFlowPage';
 import PeriodManagementPage from './pages/PeriodManagementPage';
 import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
+import AccountCombinationsPage from './pages/AccountCombinationsPage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
@@ -128,6 +129,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <ChartOfAccountsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/account-combinations"
+              element={
+                <ProtectedRoute>
+                  <AccountCombinationsPage />
                 </ProtectedRoute>
               }
             />

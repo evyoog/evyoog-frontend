@@ -1,6 +1,7 @@
 import api from './axios';
 import type {
   Account,
+  AccountCombination,
   AccountingCalendar,
   AccountingPeriod,
   AccountLedgerReport,
@@ -345,6 +346,67 @@ export async function updateBusinessUnit(
   const { data } = await api.patch<ApiResponse<BusinessUnit>>(
     `/api/v1/gl/business-units/${id}`,
     body,
+  );
+  return data.data;
+}
+
+export async function listAccountCombinations(
+  ledgerId: string,
+  legalEntityId: string,
+  costCentre?: string,
+  product?: string,
+  isActive?: boolean,
+) {
+  const params: Record<string, string | boolean> = { ledgerId, legalEntityId };
+  if (costCentre) params.costCentre = costCentre;
+  if (product) params.product = product;
+  if (isActive !== undefined) params.isActive = isActive;
+  const { data } = await api.get<ApiResponse<AccountCombination[]>>(
+    '/api/v1/gl/account-combinations',
+    { params },
+  );
+  return data.data;
+}
+
+export async function createAccountCombination(body: {
+  ledgerId: string;
+  legalEntityId: string;
+  combination: Record<string, string>;
+  description?: string;
+}) {
+  const { data } = await api.post<ApiResponse<AccountCombination>>(
+    '/api/v1/gl/account-combinations',
+    body,
+  );
+  return data.data;
+}
+
+export async function updateAccountCombination(
+  id: string,
+  body: { description?: string; isActive?: boolean },
+) {
+  const { data } = await api.put<ApiResponse<AccountCombination>>(
+    `/api/v1/gl/account-combinations/${id}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function deactivateAccountCombination(id: string) {
+  const { data } = await api.post<ApiResponse<unknown>>(
+    `/api/v1/gl/account-combinations/${id}/deactivate`,
+  );
+  return data;
+}
+
+export async function toggleDynamicInsert(
+  ledgerId: string,
+  allowDynamicInsert: boolean,
+  updatedBy: string,
+) {
+  const { data } = await api.patch<ApiResponse<Ledger>>(
+    `/api/v1/gl/ledgers/${ledgerId}/dynamic-insert`,
+    { allowDynamicInsert, updatedBy },
   );
   return data.data;
 }

@@ -283,6 +283,25 @@ export interface Ledger {
   id: string;
   ledgerName: string;
   currency: string;
+  allowDynamicInsert?: boolean;
+}
+
+export interface AccountCombination {
+  id: string;
+  ledgerId: string;
+  ledgerName: string;
+  legalEntityId: string;
+  legalEntityName: string;
+  combination: Record<string, string>;
+  combinationCode: string;
+  description: string | null;
+  isActive: boolean;
+  isDynamic: boolean;
+  firstUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
 }
 
 export interface AccountingPeriod {
