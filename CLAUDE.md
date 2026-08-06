@@ -179,3 +179,12 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Trial Balance enhanced with optional costCentre + product filter params
 - Pivot table columns driven dynamically from report.segments[]
 - Zero segment amounts display as "—" not "0.00"
+
+## Account Combinations (August 2026)
+- GET /api/v1/gl/account-combinations?ledgerId&legalEntityId
+- combination key = DimensionType enum name (COST_CENTRE, NATURAL_ACCOUNT, PRODUCT)
+- Display order: NATURAL_ACCOUNT → COST_CENTRE → PRODUCT
+- isDynamic=true = auto-registered, false = manually pre-approved
+- Client-side filtering (bounded list — matches ChartOfAccountsPage pattern)
+- Dynamic Insert toggle: PATCH /api/v1/gl/ledgers/{id}/dynamic-insert
+- Ledger type extended with optional allowDynamicInsert field
