@@ -200,10 +200,15 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 
 ## CFO Executive Dashboard KPIs (August 2026)
 - DashboardPage.tsx now derives 6 financial KPI cards + a top-5 expense
-  breakdown from the trial balance report for the most recent period
-  (periods[0] from getPeriodStatus — same list already fetched for the
-  existing Open Period card), in addition to keeping all prior sections
-  (GL Operations cards, Recent Journals table) unchanged.
+  breakdown from the trial balance report, in addition to keeping all prior
+  sections (GL Operations cards, Recent Journals table) unchanged.
+- A period-status row's accountingPeriodId does not guarantee trial balance
+  has rows for that period (backend can 404 NO_BALANCES_FOUND even for the
+  "current" period). loadDashboard tries getTrialBalance() against each
+  period from getPeriodStatus() in order and uses the first one that comes
+  back with rows — NOT just periods[0]. The periodName shown on the KPI
+  cards/expense breakdown is the matched period's, which may differ from
+  the Open Period card above it.
 - TrialBalanceReport is typed with `rows` but the backend actually nests
   rows under `lines` at runtime (see TrialBalancePage.tsx's normalizeReport).
   DashboardPage.tsx has its own local normalizeTrialBalanceRows() doing the

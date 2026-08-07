@@ -135,14 +135,24 @@ export default function DashboardPage() {
 
       setLoadingKPIs(true);
       try {
-        const latestPeriod = periods[0];
-        if (latestPeriod) {
-          const raw = await getTrialBalance(user.legalEntityId, latestPeriod.accountingPeriodId);
-          const rows = normalizeTrialBalanceRows(raw);
-          setKpis(computeKPIs(rows, latestPeriod.periodName));
-        } else {
-          setKpis(null);
+        // period-status rows don't guarantee balances exist for that period's
+        // accountingPeriodId — try each until trial balance returns rows.
+        let rows: TrialBalanceRow[] = [];
+        let matchedPeriod: PeriodStatus | null = null;
+        for (const period of periods) {
+          try {
+            const raw = await getTrialBalance(user.legalEntityId, period.accountingPeriodId);
+            const candidateRows = normalizeTrialBalanceRows(raw);
+            if (candidateRows.length > 0) {
+              rows = candidateRows;
+              matchedPeriod = period;
+              break;
+            }
+          } catch {
+            continue;
+          }
         }
+        setKpis(matchedPeriod ? computeKPIs(rows, matchedPeriod.periodName) : null);
       } catch (err) {
         // KPI load failure is non-blocking — operational dashboard still renders.
         console.error('KPI load failed:', err);
