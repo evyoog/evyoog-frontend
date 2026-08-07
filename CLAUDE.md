@@ -198,6 +198,34 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   by this page (and the rest of the app) instead of introducing a second,
   breakpoint-specific layout for just this table.
 
+## CFO Executive Dashboard KPIs (August 2026)
+- DashboardPage.tsx now derives 6 financial KPI cards + a top-5 expense
+  breakdown from the trial balance report for the most recent period
+  (periods[0] from getPeriodStatus — same list already fetched for the
+  existing Open Period card), in addition to keeping all prior sections
+  (GL Operations cards, Recent Journals table) unchanged.
+- TrialBalanceReport is typed with `rows` but the backend actually nests
+  rows under `lines` at runtime (see TrialBalancePage.tsx's normalizeReport).
+  DashboardPage.tsx has its own local normalizeTrialBalanceRows() doing the
+  same lines/rows/array fallback — not extracted to a shared util since only
+  two pages need it and the existing pattern is already page-local.
+- KPI fetch (getTrialBalance) is nested inside loadDashboard's try block, in
+  its own inner try/catch: a KPI failure (e.g. 404 — no balances yet) only
+  clears kpis to null (cards render "—", no expense breakdown) and never
+  sets the page-level `error` state — the operational dashboard always
+  still renders.
+- accountQualifier comparisons use the uppercase enum values (REVENUE,
+  EXPENSE) per the Account type / P&L API convention documented above —
+  not the 'Revenue'/'Expense' capitalized strings TrialBalancePage's
+  groupByQualifier sorts against (a pre-existing, unrelated quirk on that
+  page, not touched here).
+- formatINR() is used as-is with no manual ₹ prefix, matching every other
+  amount display in the app (Recent Journals table, Trial Balance, etc.) —
+  did not add a ₹ symbol despite the mockup in the build prompt showing one.
+- No chart library added — expense breakdown bars are plain CSS width%
+  divs (ExpenseBar), consistent with "no new dependencies" throughout this
+  project.
+
 ## Account Combinations (August 2026)
 - GET /api/v1/gl/account-combinations?ledgerId&legalEntityId
 - combination key = DimensionType enum name (COST_CENTRE, NATURAL_ACCOUNT, PRODUCT)

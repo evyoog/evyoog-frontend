@@ -6,9 +6,110 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { listJournals, getPeriodStatus } from '../api/gl';
-import type { Journal, PeriodStatus } from '../types';
+import { listJournals, getPeriodStatus, getTrialBalance } from '../api/gl';
+import type { Journal, PeriodStatus, TrialBalanceRow } from '../types';
 import { formatINR, formatDate } from '../utils/format';
+
+// Trial balance rows come back nested under `lines` at runtime even though
+// the response is typed with `rows` — same normalization TrialBalancePage uses.
+function normalizeTrialBalanceRows(raw: unknown): TrialBalanceRow[] {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  if (Array.isArray(obj.lines)) return obj.lines as TrialBalanceRow[];
+  if (Array.isArray(obj.rows)) return obj.rows as TrialBalanceRow[];
+  if (Array.isArray(raw)) return raw as TrialBalanceRow[];
+  return [];
+}
+
+interface DashboardKPIs {
+  revenue: number;
+  expenses: number;
+  netIncome: number;
+  cash: number;
+  receivables: number;
+  payables: number;
+  topExpenses: TrialBalanceRow[];
+  periodName: string;
+}
+
+function computeKPIs(rows: TrialBalanceRow[], periodName: string): DashboardKPIs {
+  const revenue = rows
+    .filter((r) => r.accountQualifier === 'REVENUE')
+    .reduce((sum, r) => sum + (r.periodToDateCr - r.periodToDateDr), 0);
+
+  const expenses = rows
+    .filter((r) => r.accountQualifier === 'EXPENSE')
+    .reduce((sum, r) => sum + (r.periodToDateDr - r.periodToDateCr), 0);
+
+  const cash = rows
+    .filter((r) => ['1100', '1200'].includes(r.accountCode))
+    .reduce((sum, r) => sum + r.endingBalance, 0);
+
+  const receivables = rows.find((r) => r.accountCode === '1300')?.endingBalance ?? 0;
+  const payables = Math.abs(rows.find((r) => r.accountCode === '2100')?.endingBalance ?? 0);
+
+  const topExpenses = rows
+    .filter((r) => r.accountQualifier === 'EXPENSE' && r.periodToDateDr - r.periodToDateCr > 0)
+    .sort(
+      (a, b) => b.periodToDateDr - b.periodToDateCr - (a.periodToDateDr - a.periodToDateCr),
+    )
+    .slice(0, 5);
+
+  return {
+    revenue,
+    expenses,
+    netIncome: revenue - expenses,
+    cash,
+    receivables,
+    payables,
+    topExpenses,
+    periodName,
+  };
+}
+
+interface KPICardProps {
+  title: string;
+  value: number | null;
+  subtitle: string;
+  indicator?: string;
+  borderColor: string;
+  indicatorColor?: string;
+}
+
+function KPICard({
+  title,
+  value,
+  subtitle,
+  indicator,
+  borderColor,
+  indicatorColor,
+}: KPICardProps) {
+  return (
+    <div className={`rounded-lg border border-border bg-white p-4 border-l-4 ${borderColor} shadow-sm`}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate">{title}</p>
+      <p className="mt-1 font-mono text-2xl font-bold text-navy">
+        {value !== null ? formatINR(value) : '—'}
+      </p>
+      <p className="mt-1 text-xs text-slate">{subtitle}</p>
+      {indicator && (
+        <p className={`mt-2 text-xs font-medium ${indicatorColor || 'text-slate'}`}>{indicator}</p>
+      )}
+    </div>
+  );
+}
+
+function ExpenseBar({ name, amount, total }: { name: string; amount: number; total: number }) {
+  const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="w-40 truncate text-sm text-navy">{name}</div>
+      <div className="h-2 flex-1 rounded-full bg-offwhite">
+        <div className="h-2 rounded-full bg-amber" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="w-28 text-right font-mono text-sm text-navy">{formatINR(amount)}</div>
+      <div className="w-10 text-right text-xs text-slate">{pct}%</div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
@@ -17,6 +118,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [pwdBannerDismissed, setPwdBannerDismissed] = useState(false);
+  const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
+  const [loadingKPIs, setLoadingKPIs] = useState(true);
 
   const loadDashboard = useCallback(async () => {
     if (!user) return;
@@ -29,6 +132,24 @@ export default function DashboardPage() {
       ]);
       setJournals(journalPage.content);
       setOpenPeriod(periods.find((p) => p.status === 'OPEN') ?? null);
+
+      setLoadingKPIs(true);
+      try {
+        const latestPeriod = periods[0];
+        if (latestPeriod) {
+          const raw = await getTrialBalance(user.legalEntityId, latestPeriod.accountingPeriodId);
+          const rows = normalizeTrialBalanceRows(raw);
+          setKpis(computeKPIs(rows, latestPeriod.periodName));
+        } else {
+          setKpis(null);
+        }
+      } catch (err) {
+        // KPI load failure is non-blocking — operational dashboard still renders.
+        console.error('KPI load failed:', err);
+        setKpis(null);
+      } finally {
+        setLoadingKPIs(false);
+      }
     } catch {
       setError(true);
     } finally {
@@ -78,6 +199,9 @@ export default function DashboardPage() {
       {loading ? (
         <>
           <div className="mt-6">
+            <CardSkeleton count={6} />
+          </div>
+          <div className="mt-6">
             <CardSkeleton count={4} />
           </div>
           <div className="mt-6">
@@ -100,6 +224,81 @@ export default function DashboardPage() {
               </Link>{' '}
               to start posting journal entries.
             </div>
+          )}
+
+          {loadingKPIs ? (
+            <div className="mt-6">
+              <CardSkeleton count={6} />
+            </div>
+          ) : (
+            <>
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <KPICard
+                  title="Revenue (PTD)"
+                  value={kpis?.revenue ?? null}
+                  subtitle={kpis?.periodName ?? '—'}
+                  borderColor="border-l-blue"
+                />
+                <KPICard
+                  title="Expenses (PTD)"
+                  value={kpis?.expenses ?? null}
+                  subtitle={kpis?.periodName ?? '—'}
+                  borderColor="border-l-amber"
+                />
+                <KPICard
+                  title="Net Income"
+                  value={kpis?.netIncome ?? null}
+                  subtitle={kpis?.periodName ?? '—'}
+                  indicator={
+                    kpis
+                      ? `Margin: ${kpis.revenue > 0 ? Math.round((kpis.netIncome / kpis.revenue) * 100) : 0}% ${kpis.netIncome >= 0 ? '▲ Profitable' : '▼ Loss-making'}`
+                      : undefined
+                  }
+                  indicatorColor={kpis && kpis.netIncome >= 0 ? 'text-green' : 'text-red-600'}
+                  borderColor={kpis && kpis.netIncome < 0 ? 'border-l-red-500' : 'border-l-green'}
+                />
+                <KPICard
+                  title="Cash Position"
+                  value={kpis?.cash ?? null}
+                  subtitle="Bank + Cash"
+                  indicator={kpis ? '● Healthy' : undefined}
+                  indicatorColor="text-green"
+                  borderColor="border-l-green"
+                />
+                <KPICard
+                  title="Receivables"
+                  value={kpis?.receivables ?? null}
+                  subtitle="Accounts Receivable"
+                  indicator={kpis ? '● Current' : undefined}
+                  indicatorColor="text-blue"
+                  borderColor="border-l-blue"
+                />
+                <KPICard
+                  title="Payables"
+                  value={kpis?.payables ?? null}
+                  subtitle="Accounts Payable"
+                  indicator={kpis ? '● Manageable' : undefined}
+                  indicatorColor="text-amber"
+                  borderColor="border-l-amber"
+                />
+              </div>
+
+              {kpis && kpis.topExpenses.length > 0 && (
+                <Card className="mt-6">
+                  <h2 className="mb-2 text-lg font-semibold text-navy">
+                    Expense Breakdown — {kpis.periodName}
+                  </h2>
+                  {kpis.topExpenses.map((row) => (
+                    <ExpenseBar
+                      key={row.accountCode}
+                      name={row.accountName}
+                      amount={row.periodToDateDr - row.periodToDateCr}
+                      total={kpis.expenses}
+                    />
+                  ))}
+                </Card>
+              )}
+            </>
           )}
 
           <div className="mt-6 grid grid-cols-4 gap-4">
