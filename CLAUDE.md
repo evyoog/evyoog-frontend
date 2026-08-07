@@ -239,3 +239,31 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Client-side filtering (bounded list — matches ChartOfAccountsPage pattern)
 - Dynamic Insert toggle: PATCH /api/v1/gl/ledgers/{id}/dynamic-insert
 - Ledger type extended with optional allowDynamicInsert field
+
+## Analytics Enhancements — Period Closing / Approval SLA / GST (August 2026)
+- PeriodManagementPage: CloseChecklist reads entirely from the existing `rows`
+  (PeriodRow[]) state — no new API calls. "Next period initialised" is found
+  by `periodNumber + 1` within the same `rows` array (not a separate periods
+  fetch); shows "—" (na) when there is no next period defined at all.
+- JournalListingPage: Approval Queue does a second, independent
+  listJournals({status:'PENDING_APPROVAL', size:20}) fetch on mount — kept
+  separate from the paginated/filtered `loadJournals` so the SLA widget
+  doesn't get reset by the page's own filters/pagination. Fails silently to
+  an empty array (non-critical widget, matches the period-dropdown pattern
+  already on this page). Section renders nothing when there are 0 pending
+  approvals. "Approve" button (gated on `gl:journal:approve`) just shows a
+  toast — no approval endpoint/flow exists yet.
+- SLA breach threshold is 2 days, computed from `journal.createdAt`.
+- DashboardPage GST Compliance card: there is no GST report endpoint in
+  gl.ts, so this calls `GET /api/v1/gl/gst/transactions` directly via the
+  shared `api` axios instance (not added to gl.ts as a typed wrapper, since
+  the actual response field shape is unknown/undocumented — CLAUDE.md's
+  standing rule is not to guess backend field names). Only `.length` is
+  used (transaction count / empty-state check); no CGST/SGST/IGST breakdown
+  is rendered since those field names aren't confirmed.
+- GST fetch uses the same matchedPeriod resolved by the KPI trial-balance
+  loop (falls back to the current OPEN period if KPIs found no balances) —
+  reuses loadDashboard's existing period-fallback logic rather than adding
+  a second one.
+- GST fetch failure is caught independently and only clears gstTransactions
+  to [] — never touches the page-level `error` state.

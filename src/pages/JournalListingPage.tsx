@@ -20,9 +20,23 @@ const STATUS_OPTIONS: (JournalStatus | 'ALL')[] = [
   'REVERSED',
 ];
 
+const SLA_DAYS = 2;
+
+function waitMs(journal: Journal): number {
+  return Date.now() - new Date(journal.createdAt).getTime();
+}
+
+function formatWait(journal: Journal): string {
+  const hours = Math.floor(waitMs(journal) / (1000 * 60 * 60));
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
 export default function JournalListingPage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
+  const [pendingApprovals, setPendingApprovals] = useState<Journal[]>([]);
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodFilter, setPeriodFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -42,6 +56,21 @@ export default function JournalListingPage() {
       .then((data) => setPeriods(data))
       .catch(() => {
         /* period dropdown is a non-critical filter */
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    listJournals({
+      legalEntityId: user.legalEntityId,
+      page: 0,
+      size: 20,
+      status: 'PENDING_APPROVAL',
+    })
+      .then((result) => setPendingApprovals(Array.isArray(result?.content) ? result.content : []))
+      .catch(() => {
+        /* approval queue is a non-critical widget */
+        setPendingApprovals([]);
       });
   }, [user]);
 
@@ -91,6 +120,42 @@ export default function JournalListingPage() {
     <AppLayout breadcrumb="Journal Listing">
       <h1 className="text-2xl font-bold text-navy">Journal Listing</h1>
       <p className="mt-1 text-sm text-slate">All journal entries for the current legal entity</p>
+
+      {pendingApprovals.length > 0 && (
+        <Card className="mt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-navy">⏳ Approval Queue</h2>
+            <span className="text-sm text-slate">{pendingApprovals.length} pending</span>
+          </div>
+          <div className="mt-3 space-y-2">
+            {pendingApprovals.map((j) => {
+              const breach = waitMs(j) > SLA_DAYS * 24 * 60 * 60 * 1000;
+              return (
+                <div
+                  key={j.id}
+                  className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 text-sm"
+                >
+                  <span className="font-mono text-navy">{j.journalNumber}</span>
+                  <span className="font-mono">{formatINR(j.totalDebit)}</span>
+                  <span className="text-slate">Submitted {formatWait(j)}</span>
+                  <span>{breach ? '⚠️' : '✅'}</span>
+                  {hasPermission('gl:journal:approve') && (
+                    <Button
+                      variant="secondary"
+                      className="ml-auto px-2 py-1 text-xs"
+                      onClick={() => showToast('Approval workflow coming soon', 'info')}
+                      aria-label={`Approve ${j.journalNumber}`}
+                    >
+                      Approve
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-slate">⚠️ = waiting more than {SLA_DAYS} days (SLA breach)</p>
+        </Card>
+      )}
 
       <Card className="mt-6">
         <div className="flex items-end gap-3">

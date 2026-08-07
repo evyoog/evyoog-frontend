@@ -7,7 +7,8 @@ import Button from '../components/ui/Button';
 import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { listJournals, getPeriodStatus, getTrialBalance } from '../api/gl';
-import type { Journal, PeriodStatus, TrialBalanceRow } from '../types';
+import api from '../api/axios';
+import type { ApiResponse, Journal, PeriodStatus, TrialBalanceRow } from '../types';
 import { formatINR, formatDate } from '../utils/format';
 
 // Trial balance rows come back nested under `lines` at runtime even though
@@ -120,6 +121,7 @@ export default function DashboardPage() {
   const [pwdBannerDismissed, setPwdBannerDismissed] = useState(false);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [loadingKPIs, setLoadingKPIs] = useState(true);
+  const [gstTransactions, setGstTransactions] = useState<unknown[]>([]);
 
   const loadDashboard = useCallback(async () => {
     if (!user) return;
@@ -131,14 +133,15 @@ export default function DashboardPage() {
         getPeriodStatus(user.legalEntityId),
       ]);
       setJournals(journalPage.content);
-      setOpenPeriod(periods.find((p) => p.status === 'OPEN') ?? null);
+      const currentOpenPeriod = periods.find((p) => p.status === 'OPEN') ?? null;
+      setOpenPeriod(currentOpenPeriod);
 
       setLoadingKPIs(true);
+      let matchedPeriod: PeriodStatus | null = null;
       try {
         // period-status rows don't guarantee balances exist for that period's
         // accountingPeriodId — try each until trial balance returns rows.
         let rows: TrialBalanceRow[] = [];
-        let matchedPeriod: PeriodStatus | null = null;
         for (const period of periods) {
           try {
             const raw = await getTrialBalance(user.legalEntityId, period.accountingPeriodId);
@@ -159,6 +162,21 @@ export default function DashboardPage() {
         setKpis(null);
       } finally {
         setLoadingKPIs(false);
+      }
+
+      // GST compliance summary — non-blocking widget, independent of KPI success.
+      try {
+        const gstPeriodId = matchedPeriod?.accountingPeriodId ?? currentOpenPeriod?.accountingPeriodId;
+        if (gstPeriodId) {
+          const { data } = await api.get<ApiResponse<unknown[]>>('/api/v1/gl/gst/transactions', {
+            params: { legalEntityId: user.legalEntityId, periodId: gstPeriodId },
+          });
+          setGstTransactions(Array.isArray(data.data) ? data.data : []);
+        } else {
+          setGstTransactions([]);
+        }
+      } catch {
+        setGstTransactions([]);
       }
     } catch {
       setError(true);
@@ -308,6 +326,21 @@ export default function DashboardPage() {
                   ))}
                 </Card>
               )}
+
+              <Card className="mt-6">
+                <h2 className="mb-3 text-lg font-semibold text-navy">
+                  GST Compliance — {kpis?.periodName ?? openPeriod?.periodName ?? '—'}
+                </h2>
+                {gstTransactions.length === 0 ? (
+                  <p className="text-sm text-slate">
+                    ✅ No GST transactions recorded for this period.
+                  </p>
+                ) : (
+                  <p className="text-sm text-navy">
+                    GST transactions: {gstTransactions.length}
+                  </p>
+                )}
+              </Card>
             </>
           )}
 

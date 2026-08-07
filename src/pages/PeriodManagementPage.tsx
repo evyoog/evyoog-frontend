@@ -66,6 +66,71 @@ const QUARTER_LABELS: Record<number, string> = {
   4: 'Q4 (Jan-Mar)',
 };
 
+function CloseChecklist({ rows }: { rows: PeriodRow[] }) {
+  const activeRow = rows.find(
+    (r) => r.status && (r.status.status === 'OPEN' || r.status.status === 'CLOSED'),
+  );
+  if (!activeRow || !activeRow.status) return null;
+
+  const { period, status } = activeRow;
+  const isClosed = status.status === 'CLOSED' || status.status === 'LOCKED';
+  const nextRow = rows.find((r) => r.period.periodNumber === period.periodNumber + 1);
+  const nextInitialised = !!nextRow?.status;
+
+  const items: { label: string; done: boolean; note: string; na?: boolean }[] = [
+    {
+      label: 'Journal entries posted',
+      done: true,
+      note: status.status === 'CLOSED' ? 'Period closed' : 'Period open',
+    },
+    {
+      label: 'Trial balance reviewed',
+      done: isClosed,
+      note: isClosed ? 'Period closed — TB reviewed' : 'Review Trial Balance before closing',
+    },
+    {
+      label: 'Period closed',
+      done: isClosed,
+      note: isClosed
+        ? `Closed by ${status.closedBy ?? 'system'} on ${formatIST(status.closedAt)}`
+        : 'Open for journal posting',
+    },
+    {
+      label: `Next period initialised${nextRow ? ` (${nextRow.period.name})` : ''}`,
+      done: nextInitialised,
+      note: nextInitialised
+        ? 'Ready for posting'
+        : nextRow
+          ? 'Initialise next period to continue operations'
+          : 'No further period defined',
+      na: !nextRow,
+    },
+  ];
+
+  return (
+    <Card className="mt-6">
+      <h3 className="mb-3 font-semibold text-navy">Close Checklist — {period.name}</h3>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-start gap-3">
+            <span
+              className={`text-lg ${item.na ? 'text-slate-300' : item.done ? 'text-green' : 'text-amber'}`}
+            >
+              {item.na ? '—' : item.done ? '✅' : '⏳'}
+            </span>
+            <div>
+              <p className={`text-sm font-medium ${item.na ? 'text-slate' : 'text-navy'}`}>
+                {item.label}
+              </p>
+              <p className="text-xs text-slate">{item.note}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 function QuarterPill({ quarter, rows }: { quarter: number; rows: PeriodRow[] }) {
   const openCount = rows.filter((r) => r.status?.status === 'OPEN').length;
   const colorClass =
@@ -239,6 +304,8 @@ export default function PeriodManagementPage() {
 
       {!loading && !error && rows.length > 0 && (
         <>
+          <CloseChecklist rows={rows} />
+
           <div className="mt-6 flex gap-3">
             {quarters.map((q) => (
               <QuarterPill key={q.quarter} quarter={q.quarter} rows={q.rows} />
