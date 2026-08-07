@@ -467,7 +467,9 @@ export default function JournalEntryPage() {
                 <thead>
                   <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
                     <th className="py-2 pr-2 font-medium">#</th>
-                    <th className="py-2 pr-2 font-medium">Natural Account</th>
+                    <th className="py-2 pr-2 font-medium">
+                      Natural Account <span className="text-red-500" aria-hidden="true">*</span>
+                    </th>
                     {costCentreDim && (
                       <th className="py-2 pr-2 font-medium">
                         Cost Centre
@@ -488,6 +490,8 @@ export default function JournalEntryPage() {
                       <td className="py-2 pr-2">
                         <Select
                           aria-label={`Natural Account for line ${idx + 1}`}
+                          aria-required="true"
+                          required
                           value={line.naturalAccountValueId}
                           onChange={(e) => selectAccount(line.key, e.target.value)}
                           onBlur={() => handleLineAccountBlur(line)}
@@ -513,6 +517,7 @@ export default function JournalEntryPage() {
                         <td className="py-2 pr-2">
                           <Select
                             aria-label={`Cost Centre for line ${idx + 1}`}
+                            aria-required={costCentreDim?.isRequired ? 'true' : undefined}
                             value={line.costCentreCode}
                             onChange={(e) => selectCostCentre(line.key, e.target.value)}
                             onBlur={() => handleLineCostCentreBlur(line)}
