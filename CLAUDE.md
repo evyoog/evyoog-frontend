@@ -267,3 +267,9 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   a second one.
 - GST fetch failure is caught independently and only clears gstTransactions
   to [] — never touches the page-level `error` state.
+
+## Analytics Enhancements (August 2026)
+- Period Closing Tracker: CloseChecklist in PeriodManagementPage — uses existing rows state, no new API calls
+- Journal Approval SLA: Approval Queue in JournalListingPage — hidden when no pending approvals (correct behavior)
+- GST Compliance: card in DashboardPage — GET /api/v1/gl/gst/transactions (NOT /api/v1/gl/reports/gst)
+  Response shape not typed — kept as raw count (response shape unconfirmed)
