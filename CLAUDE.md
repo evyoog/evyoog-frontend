@@ -180,6 +180,24 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Pivot table columns driven dynamically from report.segments[]
 - Zero segment amounts display as "—" not "0.00"
 
+## Journal Entry — Multi-Segment Account Selector (August 2026)
+- Each journal line now has Natural Account + Cost Centre + Product selectors
+  (was Natural Account only). Cost Centre/Product dims loaded from
+  listFinanceDimensions(ledgerId) + listDimensionValues(dimensionId) —
+  already existed in gl.ts, no new API functions added.
+- Cost Centre / Product columns only render if the ledger actually has that
+  FinanceDimension (dims.find by dimensionType) — screen degrades to
+  Natural-Account-only for ledgers with no extra dimensions configured.
+- accountCombination is built via buildAccountCombination(accountCode,
+  costCentreCode, productCode) — keys are DimensionType enum names
+  (NATURAL_ACCOUNT/COST_CENTRE/PRODUCT), optional keys omitted when empty.
+- Cost Centre required-ness is driven by FinanceDimension.isRequired (per
+  ledger config), not hardcoded — validated per line + gates linesReady.
+- Did NOT add the spec's suggested mobile-stacked-flex layout for dimension
+  selectors — kept the single table + overflow-x-auto pattern already used
+  by this page (and the rest of the app) instead of introducing a second,
+  breakpoint-specific layout for just this table.
+
 ## Account Combinations (August 2026)
 - GET /api/v1/gl/account-combinations?ledgerId&legalEntityId
 - combination key = DimensionType enum name (COST_CENTRE, NATURAL_ACCOUNT, PRODUCT)

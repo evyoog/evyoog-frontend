@@ -12,11 +12,20 @@ import {
   createJournal,
   getPeriodStatus,
   listChartOfAccounts,
+  listDimensionValues,
+  listFinanceDimensions,
   listJournalCategories,
   listJournalSources,
   listLedgers,
 } from '../api/gl';
-import type { ChartOfAccount, JournalCategory, JournalSource, PeriodStatus } from '../types';
+import type {
+  ChartOfAccount,
+  DimensionValue,
+  FinanceDimension,
+  JournalCategory,
+  JournalSource,
+  PeriodStatus,
+} from '../types';
 import { formatINR } from '../utils/format';
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -35,6 +44,8 @@ interface DraftLine {
   key: string;
   naturalAccountValueId: string;
   accountCode: string;
+  costCentreCode: string;
+  productCode: string;
   description: string;
   debit: string;
   credit: string;
@@ -45,10 +56,23 @@ function newLine(): DraftLine {
     key: crypto.randomUUID(),
     naturalAccountValueId: '',
     accountCode: '',
+    costCentreCode: '',
+    productCode: '',
     description: '',
     debit: '',
     credit: '',
   };
+}
+
+function buildAccountCombination(
+  naturalAccountCode: string,
+  costCentreCode: string,
+  productCode: string,
+): Record<string, string> {
+  const combination: Record<string, string> = { NATURAL_ACCOUNT: naturalAccountCode };
+  if (costCentreCode) combination.COST_CENTRE = costCentreCode;
+  if (productCode) combination.PRODUCT = productCode;
+  return combination;
 }
 
 function validateDescription(value: string): string | undefined {
@@ -72,6 +96,14 @@ function validateGlDate(value: string, openPeriod: PeriodStatus | null): string 
 
 function validateLineAccount(line: DraftLine): string | undefined {
   return line.naturalAccountValueId ? undefined : 'Account is required.';
+}
+
+function validateLineCostCentre(
+  line: DraftLine,
+  costCentreDim: FinanceDimension | null,
+): string | undefined {
+  if (costCentreDim?.isRequired && !line.costCentreCode) return 'Cost Centre is required.';
+  return undefined;
 }
 
 function validateLineAmounts(line: DraftLine): { debit?: string; credit?: string } {
@@ -115,11 +147,17 @@ export default function JournalEntryPage() {
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
   const [openPeriod, setOpenPeriod] = useState<PeriodStatus | null>(null);
   const [loadingLookups, setLoadingLookups] = useState(true);
+  const [costCentreDim, setCostCentreDim] = useState<FinanceDimension | null>(null);
+  const [productDim, setProductDim] = useState<FinanceDimension | null>(null);
+  const [costCentreValues, setCostCentreValues] = useState<DimensionValue[]>([]);
+  const [productValues, setProductValues] = useState<DimensionValue[]>([]);
 
   const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
   const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
   const isBalanced = totalDebit > 0 && totalDebit === totalCredit;
-  const linesReady = lines.every((l) => l.naturalAccountValueId);
+  const linesReady = lines.every(
+    (l) => l.naturalAccountValueId && (!costCentreDim?.isRequired || l.costCentreCode),
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -143,8 +181,25 @@ export default function JournalEntryPage() {
 
         const ledger = ledgers[0];
         if (ledger) {
-          const accountList = await listChartOfAccounts(user.legalEntityId, ledger.id);
-          if (!cancelled) setAccounts(accountList);
+          const [accountList, dims] = await Promise.all([
+            listChartOfAccounts(user.legalEntityId, ledger.id),
+            listFinanceDimensions(ledger.id),
+          ]);
+          if (cancelled) return;
+          setAccounts(accountList);
+
+          const costCtrDim = dims.find((d) => d.dimensionType === 'COST_CENTRE') ?? null;
+          const prodDim = dims.find((d) => d.dimensionType === 'PRODUCT') ?? null;
+          setCostCentreDim(costCtrDim);
+          setProductDim(prodDim);
+
+          const [costVals, prodVals] = await Promise.all([
+            costCtrDim ? listDimensionValues(costCtrDim.id) : Promise.resolve([]),
+            prodDim ? listDimensionValues(prodDim.id) : Promise.resolve([]),
+          ]);
+          if (cancelled) return;
+          setCostCentreValues(costVals.filter((v) => v.isActive));
+          setProductValues(prodVals.filter((v) => v.isActive));
         }
       })
       .catch(() => {
@@ -225,6 +280,21 @@ export default function JournalEntryPage() {
     else clearFieldError(`account-${line.key}`);
   };
 
+  const selectCostCentre = (key: string, costCentreCode: string) => {
+    updateLine(key, { costCentreCode });
+    clearFieldError(`costCentre-${key}`);
+  };
+
+  const handleLineCostCentreBlur = (line: DraftLine) => {
+    const err = validateLineCostCentre(line, costCentreDim);
+    if (err) setFieldError(`costCentre-${line.key}`, err);
+    else clearFieldError(`costCentre-${line.key}`);
+  };
+
+  const selectProduct = (key: string, productCode: string) => {
+    updateLine(key, { productCode });
+  };
+
   const handleLineAmountChange = (line: DraftLine, patch: Partial<DraftLine>) => {
     updateLine(line.key, patch);
     clearFieldError(`debit-${line.key}`);
@@ -251,6 +321,7 @@ export default function JournalEntryPage() {
     setFieldErrors((prev) => {
       const next = { ...prev };
       delete next[`account-${key}`];
+      delete next[`costCentre-${key}`];
       delete next[`debit-${key}`];
       delete next[`credit-${key}`];
       return next;
@@ -266,6 +337,8 @@ export default function JournalEntryPage() {
     for (const line of lines) {
       const accErr = validateLineAccount(line);
       if (accErr) next[`account-${line.key}`] = accErr;
+      const ccErr = validateLineCostCentre(line, costCentreDim);
+      if (ccErr) next[`costCentre-${line.key}`] = ccErr;
       const { debit, credit } = validateLineAmounts(line);
       if (debit) next[`debit-${line.key}`] = debit;
       if (credit) next[`credit-${line.key}`] = credit;
@@ -292,7 +365,7 @@ export default function JournalEntryPage() {
         lines: lines.map((l, idx) => ({
           lineNumber: idx + 1,
           naturalAccountValueId: l.naturalAccountValueId,
-          accountCombination: { NATURAL_ACCOUNT: l.accountCode },
+          accountCombination: buildAccountCombination(l.accountCode, l.costCentreCode, l.productCode),
           description: l.description,
           debitAmount: l.debit ? parseFloat(l.debit) : null,
           creditAmount: l.credit ? parseFloat(l.credit) : null,
@@ -390,11 +463,18 @@ export default function JournalEntryPage() {
               Journal Lines <span className="text-red-500">*</span>
             </h2>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-sm">
+              <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
                     <th className="py-2 pr-2 font-medium">#</th>
-                    <th className="py-2 pr-2 font-medium">Account</th>
+                    <th className="py-2 pr-2 font-medium">Natural Account</th>
+                    {costCentreDim && (
+                      <th className="py-2 pr-2 font-medium">
+                        Cost Centre
+                        {costCentreDim.isRequired && <span className="text-red-500"> *</span>}
+                      </th>
+                    )}
+                    {productDim && <th className="py-2 pr-2 font-medium">Product</th>}
                     <th className="py-2 pr-2 font-medium">Description</th>
                     <th className="py-2 pr-2 text-right font-medium">Debit</th>
                     <th className="py-2 pr-2 text-right font-medium">Credit</th>
@@ -407,7 +487,7 @@ export default function JournalEntryPage() {
                       <td className="py-2 pr-2 font-mono text-slate">{idx + 1}</td>
                       <td className="py-2 pr-2">
                         <Select
-                          aria-label={`Account for line ${idx + 1}`}
+                          aria-label={`Natural Account for line ${idx + 1}`}
                           value={line.naturalAccountValueId}
                           onChange={(e) => selectAccount(line.key, e.target.value)}
                           onBlur={() => handleLineAccountBlur(line)}
@@ -421,7 +501,50 @@ export default function JournalEntryPage() {
                             </option>
                           ))}
                         </Select>
+                        {line.accountCode && (line.costCentreCode || line.productCode) && (
+                          <div className="mt-1 text-xs text-slate/60">
+                            {line.accountCode}
+                            {line.costCentreCode ? `.${line.costCentreCode}` : ''}
+                            {line.productCode ? `.${line.productCode}` : ''}
+                          </div>
+                        )}
                       </td>
+                      {costCentreDim && (
+                        <td className="py-2 pr-2">
+                          <Select
+                            aria-label={`Cost Centre for line ${idx + 1}`}
+                            value={line.costCentreCode}
+                            onChange={(e) => selectCostCentre(line.key, e.target.value)}
+                            onBlur={() => handleLineCostCentreBlur(line)}
+                            error={fieldErrors[`costCentre-${line.key}`]}
+                            disabled={loadingLookups || saving !== null}
+                          >
+                            <option value="">Select Cost Centre</option>
+                            {costCentreValues.map((v) => (
+                              <option key={v.code} value={v.code}>
+                                {v.code} — {v.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </td>
+                      )}
+                      {productDim && (
+                        <td className="py-2 pr-2">
+                          <Select
+                            aria-label={`Product for line ${idx + 1}`}
+                            value={line.productCode}
+                            onChange={(e) => selectProduct(line.key, e.target.value)}
+                            disabled={loadingLookups || saving !== null}
+                          >
+                            <option value="">— Optional —</option>
+                            {productValues.map((v) => (
+                              <option key={v.code} value={v.code}>
+                                {v.code} — {v.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </td>
+                      )}
                       <td className="py-2 pr-2">
                         <Input
                           aria-label={`Description for line ${idx + 1}`}
