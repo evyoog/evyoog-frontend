@@ -273,3 +273,11 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Journal Approval SLA: Approval Queue in JournalListingPage — hidden when no pending approvals (correct behavior)
 - GST Compliance: card in DashboardPage — GET /api/v1/gl/gst/transactions (NOT /api/v1/gl/reports/gst)
   Response shape not typed — kept as raw count (response shape unconfirmed)
+
+## V29 Default Dimension Value (August 2026)
+- isDefault field added to DimensionValue type
+- setDimensionValueDefault / clearDimensionValueDefault in gl.ts
+- DimensionValuesPanel shows Default column + Set/Clear buttons for optional dims only
+- NATURAL_ACCOUNT and required dimensions excluded from default buttons
+- JournalEntryPage pre-selects default values on addLine()
+- Dropdown shows "(default)" hint next to default option
