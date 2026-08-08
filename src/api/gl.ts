@@ -295,6 +295,20 @@ export async function deactivateDimensionValue(id: string) {
   return data;
 }
 
+export async function setDimensionValueDefault(id: string) {
+  const { data } = await api.post<ApiResponse<DimensionValue>>(
+    `/api/v1/gl/dimension-values/${id}/set-default`,
+  );
+  return data.data;
+}
+
+export async function clearDimensionValueDefault(id: string) {
+  const { data } = await api.post<ApiResponse<DimensionValue>>(
+    `/api/v1/gl/dimension-values/${id}/clear-default`,
+  );
+  return data.data;
+}
+
 export async function searchDimensionValues(ledgerId: string, code: string) {
   const { data } = await api.get<ApiResponse<DimensionValue[]>>(
     '/api/v1/gl/dimension-values/search',

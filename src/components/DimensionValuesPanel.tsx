@@ -6,9 +6,11 @@ import Modal from './ui/Modal';
 import LoadingSpinner from './ui/LoadingSpinner';
 import { useToast } from '../context/ToastContext';
 import {
+  clearDimensionValueDefault,
   createDimensionValue,
   deactivateDimensionValue,
   listDimensionValues,
+  setDimensionValueDefault,
   updateDimensionValue,
 } from '../api/gl';
 import type { DimensionValue, FinanceDimension } from '../types';
@@ -93,6 +95,8 @@ export default function DimensionValuesPanel({
   const [loading, setLoading] = useState(true);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [confirmDefaultId, setConfirmDefaultId] = useState<string | null>(null);
+  const [defaultActingId, setDefaultActingId] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<DimensionValue | null>(null);
@@ -230,6 +234,35 @@ export default function DimensionValuesPanel({
     }
   };
 
+  const handleSetDefault = async (v: DimensionValue) => {
+    setDefaultActingId(v.id);
+    setConfirmDefaultId(null);
+    try {
+      await setDimensionValueDefault(v.id);
+      showToast(`${v.name} is now the default for ${dimension.name}`, 'success');
+      await load();
+      onValuesChanged?.();
+    } catch {
+      showToast('Failed to set default value. Please try again.', 'error');
+    } finally {
+      setDefaultActingId(null);
+    }
+  };
+
+  const handleClearDefault = async (v: DimensionValue) => {
+    setDefaultActingId(v.id);
+    try {
+      await clearDimensionValueDefault(v.id);
+      showToast(`Default cleared for ${dimension.name}`, 'success');
+      await load();
+      onValuesChanged?.();
+    } catch {
+      showToast('Failed to clear default. Please try again.', 'error');
+    } finally {
+      setDefaultActingId(null);
+    }
+  };
+
   const parentOptions = values.filter((v) => !editing || v.id !== editing.id);
 
   return (
@@ -290,6 +323,7 @@ export default function DimensionValuesPanel({
                       <th className="py-2 pr-2 font-medium">TDS</th>
                     </>
                   )}
+                  {!isNaturalAccount && <th className="py-2 pr-2 font-medium">Default</th>}
                   <th className="py-2 pr-2 font-medium">Status</th>
                   {canManage && <th className="py-2 pr-2 font-medium">Actions</th>}
                 </tr>
@@ -312,6 +346,17 @@ export default function DimensionValuesPanel({
                           </td>
                         </>
                       )}
+                      {!isNaturalAccount && (
+                        <td className="py-2 pr-2">
+                          {v.isDefault ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green">
+                              ★ Default
+                            </span>
+                          ) : (
+                            <span className="text-slate">—</span>
+                          )}
+                        </td>
+                      )}
                       <td className="py-2 pr-2">
                         <StatusBadge isActive={v.isActive} />
                       </td>
@@ -325,6 +370,47 @@ export default function DimensionValuesPanel({
                             >
                               Edit
                             </Button>
+                            {!isNaturalAccount &&
+                              !dimension.isRequired &&
+                              (v.isDefault ? (
+                                <Button
+                                  variant="secondary"
+                                  className="px-2 py-1 text-xs"
+                                  disabled={defaultActingId === v.id}
+                                  onClick={() => handleClearDefault(v)}
+                                >
+                                  Clear Default
+                                </Button>
+                              ) : confirmDefaultId === v.id ? (
+                                <span className="flex items-center gap-1 text-xs">
+                                  Set {v.name} as the default for {dimension.name}?
+                                  <Button
+                                    variant="secondary"
+                                    className="px-2 py-1 text-xs"
+                                    disabled={defaultActingId === v.id}
+                                    onClick={() => handleSetDefault(v)}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    className="px-2 py-1 text-xs"
+                                    disabled={defaultActingId === v.id}
+                                    onClick={() => setConfirmDefaultId(null)}
+                                  >
+                                    No
+                                  </Button>
+                                </span>
+                              ) : (
+                                <Button
+                                  variant="secondary"
+                                  className="px-2 py-1 text-xs"
+                                  disabled={defaultActingId === v.id}
+                                  onClick={() => setConfirmDefaultId(v.id)}
+                                >
+                                  Set Default
+                                </Button>
+                              ))}
                             {v.isActive &&
                               (confirmId === v.id ? (
                                 <span className="flex items-center gap-1 text-xs">

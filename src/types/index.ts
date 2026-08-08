@@ -184,6 +184,7 @@ export interface DimensionValue {
   tdsSection: string | null;
   displayOrder: number;
   isActive: boolean;
+  isDefault: boolean;
   ccManagerName: string | null;
   ccManagerEmail: string | null;
   ccDepartment: string | null;

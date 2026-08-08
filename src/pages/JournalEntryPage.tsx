@@ -51,13 +51,13 @@ interface DraftLine {
   credit: string;
 }
 
-function newLine(): DraftLine {
+function newLine(defaultCostCentreCode = '', defaultProductCode = ''): DraftLine {
   return {
     key: crypto.randomUUID(),
     naturalAccountValueId: '',
     accountCode: '',
-    costCentreCode: '',
-    productCode: '',
+    costCentreCode: defaultCostCentreCode,
+    productCode: defaultProductCode,
     description: '',
     debit: '',
     credit: '',
@@ -310,7 +310,9 @@ export default function JournalEntryPage() {
   };
 
   const addLine = () => {
-    setLines((prev) => [...prev, newLine()]);
+    const defaultCostCentre = costCentreValues.find((v) => v.isDefault)?.code || '';
+    const defaultProduct = productValues.find((v) => v.isDefault)?.code || '';
+    setLines((prev) => [...prev, newLine(defaultCostCentre, defaultProduct)]);
     setIsDirty(true);
   };
 
@@ -528,6 +530,7 @@ export default function JournalEntryPage() {
                             {costCentreValues.map((v) => (
                               <option key={v.code} value={v.code}>
                                 {v.code} — {v.name}
+                                {v.isDefault ? ' (default)' : ''}
                               </option>
                             ))}
                           </Select>
@@ -545,6 +548,7 @@ export default function JournalEntryPage() {
                             {productValues.map((v) => (
                               <option key={v.code} value={v.code}>
                                 {v.code} — {v.name}
+                                {v.isDefault ? ' (default)' : ''}
                               </option>
                             ))}
                           </Select>
