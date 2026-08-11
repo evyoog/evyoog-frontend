@@ -10,16 +10,52 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
   createBusinessUnit,
-  getLegalEntity,
+  createCalendar,
+  createLedger,
+  createLegalEntity,
+  generateInitialPeriods,
+  generateNextYearPeriods,
+  getAccountingCalendar,
   getPeriodStatus,
+  linkLegalEntityLedger,
+  listAccountingPeriods,
   listBusinessUnits,
+  listLedgers,
+  listLegalEntities,
   updateBusinessUnit,
   updateLegalEntity,
 } from '../api/gl';
-import type { BusinessUnit, LegalEntity } from '../types';
+import type {
+  AccountingCalendar,
+  BusinessUnit,
+  Ledger,
+  LegalEntity,
+  PeriodRow,
+  PeriodStatusValue,
+} from '../types';
 import { formatDate } from '../utils/format';
 
+const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
+
 const ACCOUNTING_STANDARDS = ['IND_AS', 'IGAAP', 'IFRS', 'US_GAAP'];
+const FINANCE_MODES = ['THICK', 'THIN', 'EVENT_ONLY'];
+const LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY', 'REPORTING', 'ENCUMBRANCE'];
+const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'SGD'];
+const PERIOD_TYPES = ['MONTHLY', 'QUARTERLY', 'FISCAL_4_4_5'];
+const MONTHS = [
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
+];
 
 const INDIAN_STATES = [
   { code: '01', name: 'Jammu & Kashmir' },
@@ -60,6 +96,37 @@ const STATE_NAME_BY_CODE = Object.fromEntries(INDIAN_STATES.map((s) => [s.code, 
 
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
+type DisplayPeriodStatus = PeriodStatusValue | 'NOT_INITIALISED';
+
+const STATUS_LABELS: Record<DisplayPeriodStatus, string> = {
+  NOT_INITIALISED: 'Not Initialised',
+  NOT_OPENED: 'Not Opened',
+  FUTURE_ENTERABLE: 'Future Enterable',
+  OPEN: 'Open',
+  CLOSED: 'Closed',
+  LOCKED: 'Locked',
+};
+
+const STATUS_CLASSES: Record<DisplayPeriodStatus, string> = {
+  NOT_INITIALISED: 'bg-slate-100 text-slate',
+  NOT_OPENED: 'bg-slate-100 text-slate',
+  FUTURE_ENTERABLE: 'bg-blue-light text-blue-dark',
+  OPEN: 'bg-green-light text-green',
+  CLOSED: 'bg-amber-light text-amber',
+  LOCKED: 'bg-red-50 text-red-600',
+};
+
+const QUARTER_LABELS: Record<number, string> = {
+  1: 'Q1 (Apr-Jun)',
+  2: 'Q2 (Jul-Sep)',
+  3: 'Q3 (Oct-Dec)',
+  4: 'Q4 (Jan-Mar)',
+};
+
+function periodDisplayStatus(row: PeriodRow): DisplayPeriodStatus {
+  return row.status?.status ?? 'NOT_INITIALISED';
+}
+
 function stateLabel(stateCode: string | null) {
   if (!stateCode) return '—';
   return STATE_NAME_BY_CODE[stateCode] ?? stateCode;
@@ -77,20 +144,19 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
+type TabKey = 'LE' | 'LEDGER' | 'BU';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'LE', label: '🏢 Legal Entities' },
+  { key: 'LEDGER', label: '📒 Ledger & Calendar' },
+  { key: 'BU', label: '🏭 Business Units' },
+];
+
 interface LegalEntityEditForm {
   name: string;
   accountingStandard: string;
   tan: string;
 }
-
-interface BusinessUnitForm {
-  code: string;
-  name: string;
-  stateCode: string;
-  gstin: string;
-}
-
-const EMPTY_BU_FORM: BusinessUnitForm = { code: '', name: '', stateCode: '', gstin: '' };
 
 function LegalEntityEditPanel({
   legalEntity,
@@ -227,19 +293,542 @@ function LegalEntityEditPanel({
   );
 }
 
+interface AddLEForm {
+  code: string;
+  name: string;
+  accountingStandard: string;
+  tan: string;
+}
+
+const EMPTY_LE_FORM: AddLEForm = { code: '', name: '', accountingStandard: 'IND_AS', tan: '' };
+
+function AddLegalEntityModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (le: LegalEntity) => void;
+}) {
+  const { showToast } = useToast();
+  const [form, setForm] = useState<AddLEForm>(EMPTY_LE_FORM);
+  const [errors, setErrors] = useState<Partial<Record<keyof AddLEForm, string>>>({});
+  const [saving, setSaving] = useState(false);
+
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!form.code.trim()) next.code = 'Code is required';
+    else if (form.code.length > 50) next.code = 'Code must be 50 characters or fewer';
+    if (!form.name.trim()) next.name = 'Name is required';
+    else if (form.name.length > 200) next.name = 'Name must be 200 characters or fewer';
+    if (form.tan.trim() && form.tan.length > 10) next.tan = 'TAN must be 10 characters or fewer';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const created = await createLegalEntity({
+        businessGroupId: BUSINESS_GROUP_ID,
+        code: form.code.trim().toUpperCase(),
+        name: form.name.trim(),
+        accountingStandard: form.accountingStandard,
+        tan: form.tan.trim() || undefined,
+      });
+      showToast(`${created.name} created successfully. Set up a Ledger to start posting.`, 'success');
+      onCreated(created);
+      onClose();
+    } catch {
+      showToast('Failed to create legal entity. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Add Legal Entity"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Create Legal Entity
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Input
+          id="new-le-code"
+          label="Code"
+          required
+          maxLength={50}
+          placeholder="LE-KARNATAKA"
+          value={form.code}
+          onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+          error={errors.code}
+        />
+        <Input
+          id="new-le-name"
+          label="Name"
+          required
+          maxLength={200}
+          placeholder="Orbinox Valves Karnataka Pvt Ltd"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          error={errors.name}
+        />
+        <Select
+          id="new-le-standard"
+          label="Accounting Standard"
+          required
+          value={form.accountingStandard}
+          onChange={(e) => setForm({ ...form, accountingStandard: e.target.value })}
+        >
+          {ACCOUNTING_STANDARDS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+        <Input
+          id="new-le-tan"
+          label="TAN"
+          maxLength={10}
+          value={form.tan}
+          onChange={(e) => setForm({ ...form, tan: e.target.value.toUpperCase() })}
+          error={errors.tan}
+        />
+      </div>
+    </Modal>
+  );
+}
+
+interface CreateLedgerForm {
+  code: string;
+  name: string;
+  description: string;
+  financeMode: string;
+  ledgerCategory: string;
+  functionalCurrency: string;
+  accountingStandard: string;
+}
+
+const EMPTY_LEDGER_FORM: CreateLedgerForm = {
+  code: '',
+  name: '',
+  description: '',
+  financeMode: 'THICK',
+  ledgerCategory: 'PRIMARY',
+  functionalCurrency: 'INR',
+  accountingStandard: 'IND_AS',
+};
+
+function CreateLedgerModal({
+  legalEntity,
+  onClose,
+  onCreated,
+}: {
+  legalEntity: LegalEntity;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const { showToast } = useToast();
+  const [form, setForm] = useState<CreateLedgerForm>(EMPTY_LEDGER_FORM);
+  const [errors, setErrors] = useState<Partial<Record<keyof CreateLedgerForm, string>>>({});
+  const [saving, setSaving] = useState(false);
+
+  const validate = () => {
+    const next: typeof errors = {};
+    if (!form.code.trim()) next.code = 'Code is required';
+    else if (form.code.length > 30) next.code = 'Code must be 30 characters or fewer';
+    if (!form.name.trim()) next.name = 'Name is required';
+    else if (form.name.length > 255) next.name = 'Name must be 255 characters or fewer';
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      const newLedger = await createLedger({
+        code: form.code.trim().toUpperCase(),
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        financeMode: form.financeMode,
+        ledgerCategory: form.ledgerCategory,
+        functionalCurrency: form.functionalCurrency,
+        accountingStandard: form.accountingStandard,
+      });
+      try {
+        await linkLegalEntityLedger({
+          legalEntityId: legalEntity.id,
+          ledgerId: newLedger.id,
+          ledgerCategory: 'PRIMARY',
+        });
+        showToast(
+          `Ledger created and linked to ${legalEntity.name}. Next: Create Accounting Calendar.`,
+          'success',
+        );
+      } catch {
+        showToast(
+          'Ledger created, but linking it to the legal entity failed. Please retry the link from this screen.',
+          'error',
+        );
+      }
+      onCreated();
+      onClose();
+    } catch {
+      showToast('Failed to create ledger. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Create Ledger"
+      subtitle={legalEntity.name}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Create Ledger
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Input
+          id="ledger-code"
+          label="Code"
+          required
+          maxLength={30}
+          placeholder="PRIM-KA-01"
+          value={form.code}
+          onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+          error={errors.code}
+        />
+        <Input
+          id="ledger-name"
+          label="Name"
+          required
+          maxLength={255}
+          placeholder="Primary Ledger — Karnataka"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          error={errors.name}
+        />
+        <div>
+          <label htmlFor="ledger-description" className="mb-1 block text-sm font-medium text-navy">
+            Description
+          </label>
+          <textarea
+            id="ledger-description"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-blue focus:outline-none"
+            rows={2}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+        <Select
+          id="ledger-finance-mode"
+          label="Finance Mode"
+          required
+          value={form.financeMode}
+          onChange={(e) => setForm({ ...form, financeMode: e.target.value })}
+        >
+          {FINANCE_MODES.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="ledger-category"
+          label="Ledger Category"
+          value={form.ledgerCategory}
+          onChange={(e) => setForm({ ...form, ledgerCategory: e.target.value })}
+        >
+          {LEDGER_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="ledger-currency"
+          label="Functional Currency"
+          required
+          value={form.functionalCurrency}
+          onChange={(e) => setForm({ ...form, functionalCurrency: e.target.value })}
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="ledger-standard"
+          label="Accounting Standard"
+          required
+          value={form.accountingStandard}
+          onChange={(e) => setForm({ ...form, accountingStandard: e.target.value })}
+        >
+          {ACCOUNTING_STANDARDS.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </Modal>
+  );
+}
+
+interface CreateCalendarForm {
+  name: string;
+  description: string;
+  fiscalYearStartMonth: number;
+  fiscalYearStartDay: number;
+  periodType: string;
+  initialFiscalYear: number;
+}
+
+function emptyCalendarForm(): CreateCalendarForm {
+  return {
+    name: '',
+    description: '',
+    fiscalYearStartMonth: 4,
+    fiscalYearStartDay: 1,
+    periodType: 'MONTHLY',
+    initialFiscalYear: new Date().getFullYear(),
+  };
+}
+
+function CreateCalendarModal({
+  ledger,
+  onClose,
+  onCreated,
+}: {
+  ledger: Ledger;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const { showToast } = useToast();
+  const [form, setForm] = useState<CreateCalendarForm>(emptyCalendarForm());
+  const [nameError, setNameError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      setNameError('Name is required');
+      return;
+    }
+    setNameError('');
+    setSaving(true);
+    try {
+      const cal = await createCalendar({
+        ledgerId: ledger.id,
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        fiscalYearStartMonth: form.fiscalYearStartMonth,
+        fiscalYearStartDay: form.fiscalYearStartDay,
+        periodType: form.periodType,
+        initialFiscalYear: form.initialFiscalYear,
+      });
+      try {
+        await generateInitialPeriods(cal.id);
+        showToast(
+          `Calendar created with 12 periods for FY ${form.initialFiscalYear}-${form.initialFiscalYear + 1}.`,
+          'success',
+        );
+      } catch {
+        showToast(
+          'Calendar created, but period generation failed. You can retry generating periods from this screen.',
+          'error',
+        );
+      }
+      onCreated();
+      onClose();
+    } catch {
+      showToast('Failed to create calendar. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Create Accounting Calendar"
+      subtitle={ledger.ledgerName}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving}>
+            Create Calendar
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Input
+          id="cal-name"
+          label="Name"
+          required
+          placeholder="FY Calendar 2025-26"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          error={nameError}
+        />
+        <div>
+          <label htmlFor="cal-description" className="mb-1 block text-sm font-medium text-navy">
+            Description
+          </label>
+          <textarea
+            id="cal-description"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-blue focus:outline-none"
+            rows={2}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
+        <Select
+          id="cal-fy-month"
+          label="Fiscal Year Start Month"
+          required
+          value={form.fiscalYearStartMonth}
+          onChange={(e) => setForm({ ...form, fiscalYearStartMonth: Number(e.target.value) })}
+        >
+          {MONTHS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </Select>
+        <Input
+          id="cal-fy-day"
+          label="Fiscal Year Start Day"
+          type="number"
+          min={1}
+          max={31}
+          value={form.fiscalYearStartDay}
+          onChange={(e) => setForm({ ...form, fiscalYearStartDay: Number(e.target.value) })}
+        />
+        <Select
+          id="cal-period-type"
+          label="Period Type"
+          required
+          value={form.periodType}
+          onChange={(e) => setForm({ ...form, periodType: e.target.value })}
+        >
+          {PERIOD_TYPES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </Select>
+        <Input
+          id="cal-fy"
+          label="Initial Fiscal Year"
+          type="number"
+          required
+          value={form.initialFiscalYear}
+          onChange={(e) => setForm({ ...form, initialFiscalYear: Number(e.target.value) })}
+        />
+        <p className="text-xs text-slate">
+          Enter the year the first period starts. For Apr 2025 – Mar 2026, enter 2025.
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
+interface BusinessUnitForm {
+  code: string;
+  name: string;
+  stateCode: string;
+  gstin: string;
+}
+
+const EMPTY_BU_FORM: BusinessUnitForm = { code: '', name: '', stateCode: '', gstin: '' };
+
+function SetupBanner({
+  hasLE,
+  hasLedger,
+  hasCalendar,
+  hasPeriods,
+  periodCount,
+  hasBU,
+}: {
+  hasLE: boolean;
+  hasLedger: boolean;
+  hasCalendar: boolean;
+  hasPeriods: boolean;
+  periodCount: number;
+  hasBU: boolean;
+}) {
+  const items: { label: string; done: boolean }[] = [
+    { label: 'Legal Entity', done: hasLE },
+    { label: 'Ledger', done: hasLedger },
+    { label: 'Calendar', done: hasCalendar },
+    { label: hasPeriods ? `${periodCount} Periods` : 'Periods', done: hasPeriods },
+    { label: 'Business Unit', done: hasBU },
+  ];
+  return (
+    <Card className="mb-6">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        {items.map((item) => (
+          <span key={item.label} className="flex items-center gap-1.5">
+            <span>{item.done ? '✅' : '⬜'}</span>
+            <span className={item.done ? 'text-navy' : 'text-slate'}>{item.label}</span>
+          </span>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export default function EnterpriseStructurePage() {
   const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
   const canManage = hasPermission('gl:enterprise:manage');
 
-  const [legalEntity, setLegalEntity] = useState<LegalEntity | null>(null);
-  const [fallbackName, setFallbackName] = useState<string | null>(null);
-  const [loadingLE, setLoadingLE] = useState(true);
-  const [errorLE, setErrorLE] = useState(false);
-  const [showEditLE, setShowEditLE] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('LE');
+
+  const [legalEntities, setLegalEntities] = useState<LegalEntity[]>([]);
+  const [loadingLEs, setLoadingLEs] = useState(true);
+  const [errorLEs, setErrorLEs] = useState(false);
+  const [selectedLEId, setSelectedLEId] = useState<string | null>(null);
+  const [expandedLEId, setExpandedLEId] = useState<string | null>(null);
+  const [showAddLEModal, setShowAddLEModal] = useState(false);
+  const [editingLE, setEditingLE] = useState<LegalEntity | null>(null);
+
+  const [ledger, setLedger] = useState<Ledger | null>(null);
+  const [loadingLedger, setLoadingLedger] = useState(false);
+  const [errorLedger, setErrorLedger] = useState(false);
+  const [showCreateLedgerModal, setShowCreateLedgerModal] = useState(false);
+
+  const [calendar, setCalendar] = useState<AccountingCalendar | null>(null);
+  const [periodRows, setPeriodRows] = useState<PeriodRow[]>([]);
+  const [showCreateCalendarModal, setShowCreateCalendarModal] = useState(false);
+  const [showGenerateNextConfirm, setShowGenerateNextConfirm] = useState(false);
+  const [generatingNext, setGeneratingNext] = useState(false);
 
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
-  const [loadingBUs, setLoadingBUs] = useState(true);
+  const [loadingBUs, setLoadingBUs] = useState(false);
   const [errorBUs, setErrorBUs] = useState(false);
 
   const [showBUModal, setShowBUModal] = useState(false);
@@ -248,37 +837,67 @@ export default function EnterpriseStructurePage() {
   const [buErrors, setBuErrors] = useState<Partial<Record<keyof BusinessUnitForm, string>>>({});
   const [savingBU, setSavingBU] = useState(false);
 
-  async function loadLegalEntity() {
-    if (!user) return;
-    setLoadingLE(true);
-    setErrorLE(false);
-    setFallbackName(null);
+  const selectedLE = legalEntities.find((le) => le.id === selectedLEId) ?? null;
+
+  async function loadLegalEntities(preferredId?: string) {
+    setLoadingLEs(true);
+    setErrorLEs(false);
     try {
-      const data = await getLegalEntity(user.legalEntityId);
-      setLegalEntity(data);
+      const data = await listLegalEntities(BUSINESS_GROUP_ID);
+      setLegalEntities(data);
+      setSelectedLEId((current) => {
+        const wanted = preferredId ?? current ?? user?.legalEntityId ?? null;
+        if (wanted && data.some((le) => le.id === wanted)) return wanted;
+        return data[0]?.id ?? null;
+      });
     } catch {
-      try {
-        const periods = await getPeriodStatus(user.legalEntityId);
-        if (periods[0]) {
-          setFallbackName(periods[0].legalEntityName);
-        } else {
-          setErrorLE(true);
-        }
-      } catch {
-        setErrorLE(true);
-        showToast('Failed to load legal entity.', 'error');
-      }
+      setErrorLEs(true);
+      showToast('Failed to load legal entities.', 'error');
     } finally {
-      setLoadingLE(false);
+      setLoadingLEs(false);
     }
   }
 
-  async function loadBusinessUnits() {
-    if (!user) return;
+  async function loadLedgerAndCalendar(legalEntityId: string) {
+    setLoadingLedger(true);
+    setErrorLedger(false);
+    setCalendar(null);
+    setPeriodRows([]);
+    try {
+      const ledgers = await listLedgers(legalEntityId);
+      const primary = ledgers[0] ?? null;
+      setLedger(primary);
+      if (!primary) return;
+
+      try {
+        const cal = await getAccountingCalendar(primary.id);
+        setCalendar(cal);
+        const [periods, statuses] = await Promise.all([
+          listAccountingPeriods(cal.id),
+          getPeriodStatus(legalEntityId),
+        ]);
+        const statusByPeriodId = new Map(statuses.map((s) => [s.accountingPeriodId, s]));
+        const merged: PeriodRow[] = [...periods]
+          .sort((a, b) => a.periodNumber - b.periodNumber)
+          .map((period) => ({ period, status: statusByPeriodId.get(period.id) ?? null }));
+        setPeriodRows(merged);
+      } catch {
+        setCalendar(null);
+        setPeriodRows([]);
+      }
+    } catch {
+      setErrorLedger(true);
+      showToast('Failed to load ledger.', 'error');
+    } finally {
+      setLoadingLedger(false);
+    }
+  }
+
+  async function loadBusinessUnits(legalEntityId: string) {
     setLoadingBUs(true);
     setErrorBUs(false);
     try {
-      const data = await listBusinessUnits(user.legalEntityId);
+      const data = await listBusinessUnits(legalEntityId);
       setBusinessUnits(Array.isArray(data) ? data : []);
     } catch {
       setErrorBUs(true);
@@ -289,10 +908,27 @@ export default function EnterpriseStructurePage() {
   }
 
   useEffect(() => {
-    loadLegalEntity();
-    loadBusinessUnits();
+    loadLegalEntities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    if (!selectedLEId) {
+      setLedger(null);
+      setCalendar(null);
+      setPeriodRows([]);
+      setBusinessUnits([]);
+      return;
+    }
+    loadLedgerAndCalendar(selectedLEId);
+    loadBusinessUnits(selectedLEId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLEId]);
+
+  const goToTab = (tab: TabKey, legalEntityId?: string) => {
+    if (legalEntityId) setSelectedLEId(legalEntityId);
+    setActiveTab(tab);
+  };
 
   const openAddBU = () => {
     setEditingBU(null);
@@ -327,7 +963,7 @@ export default function EnterpriseStructurePage() {
   };
 
   const handleSaveBU = async () => {
-    if (!user || !validateBU()) return;
+    if (!selectedLEId || !validateBU()) return;
     setSavingBU(true);
     try {
       if (editingBU) {
@@ -339,7 +975,7 @@ export default function EnterpriseStructurePage() {
         showToast('Business unit updated successfully.', 'success');
       } else {
         await createBusinessUnit({
-          legalEntityId: user.legalEntityId,
+          legalEntityId: selectedLEId,
           code: buForm.code.trim().toUpperCase(),
           name: buForm.name.trim(),
           gstin: buForm.gstin.trim() || undefined,
@@ -348,7 +984,7 @@ export default function EnterpriseStructurePage() {
         showToast('Business unit created successfully.', 'success');
       }
       setShowBUModal(false);
-      await loadBusinessUnits();
+      await loadBusinessUnits(selectedLEId);
     } catch {
       showToast('Failed to save business unit. Please try again.', 'error');
     } finally {
@@ -356,139 +992,459 @@ export default function EnterpriseStructurePage() {
     }
   };
 
-  const displayName = legalEntity?.name ?? fallbackName;
+  const handleGenerateNext = async () => {
+    if (!calendar) return;
+    setGeneratingNext(true);
+    try {
+      await generateNextYearPeriods(calendar.id);
+      showToast('Next fiscal year periods generated successfully.', 'success');
+      setShowGenerateNextConfirm(false);
+      if (selectedLEId) await loadLedgerAndCalendar(selectedLEId);
+    } catch {
+      showToast('Failed to generate next year periods. Please try again.', 'error');
+    } finally {
+      setGeneratingNext(false);
+    }
+  };
+
+  const hasLE = legalEntities.length > 0;
+  const hasLedger = !!ledger;
+  const hasCalendar = !!calendar;
+  const hasPeriods = periodRows.length > 0;
+  const hasBU = businessUnits.length > 0;
 
   return (
     <AppLayout breadcrumb="Enterprise Structure">
       <h1 className="text-2xl font-bold text-navy">Enterprise Structure</h1>
-      <p className="mt-1 text-sm text-slate">Legal entity and business unit hierarchy</p>
+      <p className="mt-1 text-sm text-slate">
+        Legal entity, ledger, calendar, and business unit setup
+      </p>
 
       <div className="mt-6">
-        {loadingLE && <CardSkeleton count={1} />}
-
-        {!loadingLE && errorLE && (
-          <ErrorState message="Failed to load legal entity." onRetry={loadLegalEntity} />
+        {!loadingLEs && !errorLEs && (
+          <SetupBanner
+            hasLE={hasLE}
+            hasLedger={hasLedger}
+            hasCalendar={hasCalendar}
+            hasPeriods={hasPeriods}
+            periodCount={periodRows.length}
+            hasBU={hasBU}
+          />
         )}
 
-        {!loadingLE && !errorLE && displayName && (
-          <Card accent>
-            <div className="flex items-start justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate">
-                🏢 Legal Entity
-              </p>
-              {canManage && legalEntity && (
-                <Button
-                  variant="secondary"
-                  className="px-3 py-1.5 text-xs"
-                  onClick={() => setShowEditLE(true)}
-                  aria-label="Edit legal entity"
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
-            <p className="mt-1 text-xl font-bold text-navy">{displayName}</p>
-            {legalEntity ? (
-              <>
-                <p className="mt-1 text-sm text-slate">Code: {legalEntity.code}</p>
-                <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-slate">
-                  <span>Standard: {legalEntity.accountingStandard}</span>
-                  <span className="text-border">│</span>
-                  <span>TAN: {legalEntity.tan || '—'}</span>
-                  <span className="text-border">│</span>
-                  <span>Status:</span>
-                  <StatusBadge isActive={legalEntity.isActive} />
-                </p>
-                <p className="mt-2 text-xs text-slate">
-                  Created: {formatDate(legalEntity.createdAt)}
-                </p>
-              </>
-            ) : (
-              <p className="mt-2 text-xs text-slate">
-                Limited legal entity details available.
-              </p>
-            )}
-          </Card>
-        )}
-      </div>
-
-      <Card className="mt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-navy">Business Units</h2>
-          {canManage && (
-            <Button onClick={openAddBU} aria-label="Add new business unit">
-              Add Business Unit
-            </Button>
-          )}
+        <div className="mb-6 flex gap-2 border-b border-border">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'border-blue text-blue'
+                  : 'border-transparent text-slate hover:text-navy'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="mt-4">
-          {loadingBUs && <TableSkeleton rows={3} columns={7} />}
+        {activeTab === 'LE' && (
+          <div>
+            {loadingLEs && <CardSkeleton count={3} />}
+            {!loadingLEs && errorLEs && (
+              <ErrorState message="Failed to load legal entities." onRetry={() => loadLegalEntities()} />
+            )}
+            {!loadingLEs && !errorLEs && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {legalEntities.map((le) => {
+                  const isExpanded = expandedLEId === le.id;
+                  const isSelected = selectedLEId === le.id;
+                  return (
+                    <Card key={le.id} accent={isSelected} className="flex flex-col">
+                      <div className="flex items-start justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate">
+                          🏢 Legal Entity
+                        </p>
+                        <StatusBadge isActive={le.isActive} />
+                      </div>
+                      <p className="mt-1 text-lg font-bold text-navy">{le.name}</p>
+                      <p className="mt-1 text-sm text-slate">Code: {le.code}</p>
+                      <p className="mt-1 text-sm text-slate">Standard: {le.accountingStandard}</p>
 
-          {!loadingBUs && errorBUs && (
-            <ErrorState message="Failed to load business units." onRetry={loadBusinessUnits} />
-          )}
+                      {isExpanded && (
+                        <div className="mt-3 border-t border-border pt-3 text-sm text-slate">
+                          <p className="mb-2">
+                            TAN: {le.tan || '—'} · Created: {formatDate(le.createdAt)}
+                          </p>
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              className="text-left text-blue hover:underline"
+                              onClick={() => goToTab('LEDGER', le.id)}
+                            >
+                              View Ledger →
+                            </button>
+                            <button
+                              type="button"
+                              className="text-left text-blue hover:underline"
+                              onClick={() => goToTab('BU', le.id)}
+                            >
+                              View Business Units →
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
-          {!loadingBUs && !errorBUs && businessUnits.length === 0 && (
-            <EmptyState
-              title="No business units defined"
-              message="Add a business unit to define operational segments under this legal entity."
-              action={canManage ? { label: 'Add Business Unit', onClick: openAddBU } : undefined}
-            />
-          )}
-
-          {!loadingBUs && !errorBUs && businessUnits.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
-                    <th className="py-2 pr-2 font-medium">Code</th>
-                    <th className="py-2 pr-2 font-medium">Name</th>
-                    <th className="py-2 pr-2 font-medium">State</th>
-                    <th className="py-2 pr-2 font-medium">GSTIN</th>
-                    <th className="py-2 pr-2 font-medium">Status</th>
-                    <th className="py-2 pr-2 font-medium">Created</th>
-                    <th className="py-2 pr-2 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {businessUnits.map((bu) => (
-                    <tr key={bu.id} className="border-b border-border last:border-0 hover:bg-offwhite">
-                      <td className="py-2 pr-2 font-mono text-navy">{bu.code}</td>
-                      <td className="py-2 pr-2">{bu.name}</td>
-                      <td className="py-2 pr-2">{stateLabel(bu.stateCode)}</td>
-                      <td className="py-2 pr-2 font-mono">{bu.gstin || 'Not set'}</td>
-                      <td className="py-2 pr-2">
-                        <StatusBadge isActive={bu.isActive} />
-                      </td>
-                      <td className="py-2 pr-2">{formatDate(bu.createdAt)}</td>
-                      <td className="py-2 pr-2">
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="secondary"
+                          className="px-3 py-1.5 text-xs"
+                          onClick={() => {
+                            setSelectedLEId(le.id);
+                            setExpandedLEId(isExpanded ? null : le.id);
+                          }}
+                        >
+                          {isExpanded ? 'Hide Details' : 'View Details'}
+                        </Button>
                         {canManage && (
                           <Button
                             variant="secondary"
-                            className="px-2 py-1 text-xs"
-                            onClick={() => openEditBU(bu)}
-                            aria-label={`Edit ${bu.name}`}
+                            className="px-3 py-1.5 text-xs"
+                            onClick={() => setEditingLE(le)}
                           >
                             Edit
                           </Button>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </Card>
+                      </div>
+                    </Card>
+                  );
+                })}
 
-      {showEditLE && legalEntity && (
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddLEModal(true)}
+                    className="flex min-h-[160px] flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-5 text-center text-slate transition-colors hover:border-blue hover:text-blue"
+                  >
+                    <span className="text-2xl">➕</span>
+                    <span className="mt-2 text-sm font-medium">Add Legal Entity</span>
+                    <span className="mt-1 text-xs">
+                      Click to create a new legal entity under this business group
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'LEDGER' && (
+          <div className="flex flex-col gap-6">
+            {!hasLE && !loadingLEs && (
+              <EmptyState title="Create a Legal Entity first" message="You need a legal entity before configuring a ledger and calendar." />
+            )}
+
+            {selectedLE && (
+              <>
+                {loadingLedger && <CardSkeleton count={1} />}
+
+                {!loadingLedger && errorLedger && (
+                  <ErrorState
+                    message="Failed to load ledger."
+                    onRetry={() => loadLedgerAndCalendar(selectedLE.id)}
+                  />
+                )}
+
+                {!loadingLedger && !errorLedger && !ledger && (
+                  <Card>
+                    <p className="text-sm font-semibold text-navy">📒 No Ledger Configured</p>
+                    <p className="mt-2 text-sm text-slate">
+                      A ledger defines the accounting book for {selectedLE.name} — linking Chart
+                      of Accounts, currency, and finance mode.
+                    </p>
+                    {canManage && (
+                      <Button className="mt-4" onClick={() => setShowCreateLedgerModal(true)}>
+                        + Create Ledger
+                      </Button>
+                    )}
+                  </Card>
+                )}
+
+                {!loadingLedger && !errorLedger && ledger && (
+                  <Card accent>
+                    <div className="flex items-start justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate">
+                        📒 {ledger.ledgerCategory ?? 'Primary'} Ledger
+                      </p>
+                      <StatusBadge isActive={ledger.isActive ?? true} />
+                    </div>
+                    <p className="mt-1 text-lg font-bold text-navy">{ledger.ledgerName}</p>
+                    <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-slate">
+                      <span>Code: {ledger.code ?? '—'}</span>
+                      <span className="text-border">│</span>
+                      <span>Finance Mode: {ledger.financeMode ?? '—'}</span>
+                      <span className="text-border">│</span>
+                      <span>Currency: {ledger.currency}</span>
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate">
+                      <span>Standard: {ledger.accountingStandard ?? '—'}</span>
+                      <span className="text-border">│</span>
+                      <span>
+                        Dynamic Insert: {ledger.allowDynamicInsert ? '● ON' : '● OFF'}
+                      </span>
+                    </p>
+                  </Card>
+                )}
+
+                {ledger && !loadingLedger && !errorLedger && (
+                  <>
+                    {!calendar && (
+                      <Card>
+                        <p className="text-sm font-semibold text-navy">📅 No Calendar Configured</p>
+                        <p className="mt-2 text-sm text-slate">
+                          An accounting calendar defines the fiscal year structure and periods
+                          for this ledger.
+                        </p>
+                        {canManage && (
+                          <Button className="mt-4" onClick={() => setShowCreateCalendarModal(true)}>
+                            + Create Calendar
+                          </Button>
+                        )}
+                      </Card>
+                    )}
+
+                    {calendar && (
+                      <Card accent>
+                        <div className="flex items-start justify-between">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate">
+                            📅 {calendar.name}
+                          </p>
+                          {canManage && (
+                            <Button
+                              variant="secondary"
+                              className="px-3 py-1.5 text-xs"
+                              onClick={() => setShowGenerateNextConfirm(true)}
+                            >
+                              Generate Next FY →
+                            </Button>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-slate">
+                          Period Type: {calendar.periodType} ({calendar.periodsPerYear} periods/year)
+                        </p>
+                        <p className="mt-1 text-sm text-slate">
+                          Current FY: {calendar.currentFiscalYear}
+                        </p>
+                        <p className="mt-1 text-sm text-slate">
+                          Generated: {calendar.generatedPeriodCount} periods
+                        </p>
+                      </Card>
+                    )}
+
+                    {calendar && (
+                      <Card>
+                        <h3 className="text-sm font-bold text-navy">Period Summary</h3>
+                        <div className="mt-3">
+                          {periodRows.length === 0 ? (
+                            <p className="text-sm text-slate">No periods generated yet.</p>
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-sm">
+                                <thead>
+                                  <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
+                                    <th className="py-2 pr-2 font-medium">Period</th>
+                                    <th className="py-2 pr-2 font-medium">Quarter</th>
+                                    <th className="py-2 pr-2 font-medium">Dates</th>
+                                    <th className="py-2 pr-2 font-medium">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {periodRows.map((row) => {
+                                    const status = periodDisplayStatus(row);
+                                    return (
+                                      <tr
+                                        key={row.period.id}
+                                        className="border-b border-border last:border-0 hover:bg-offwhite"
+                                      >
+                                        <td className="py-2 pr-2 font-medium text-navy">
+                                          {row.period.name}
+                                        </td>
+                                        <td className="py-2 pr-2">
+                                          {QUARTER_LABELS[row.period.quarterNumber] ??
+                                            row.period.quarterNumber}
+                                        </td>
+                                        <td className="py-2 pr-2">
+                                          {formatDate(row.period.startDate)} –{' '}
+                                          {formatDate(row.period.endDate)}
+                                        </td>
+                                        <td className="py-2 pr-2">
+                                          <span
+                                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase tracking-wide ${STATUS_CLASSES[status]}`}
+                                          >
+                                            {STATUS_LABELS[status]}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'BU' && (
+          <div>
+            {!hasLE && !loadingLEs && (
+              <EmptyState title="Create a Legal Entity first" message="You need a legal entity before adding business units." />
+            )}
+
+            {selectedLE && (
+              <Card>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-navy">
+                    Business Units — {selectedLE.name}
+                  </h2>
+                  {canManage && (
+                    <Button onClick={openAddBU} aria-label="Add new business unit">
+                      Add Business Unit
+                    </Button>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  {loadingBUs && <TableSkeleton rows={3} columns={7} />}
+
+                  {!loadingBUs && errorBUs && (
+                    <ErrorState
+                      message="Failed to load business units."
+                      onRetry={() => loadBusinessUnits(selectedLE.id)}
+                    />
+                  )}
+
+                  {!loadingBUs && !errorBUs && businessUnits.length === 0 && (
+                    <EmptyState
+                      title="No business units defined"
+                      message="Add a business unit to define operational segments under this legal entity."
+                      action={canManage ? { label: 'Add Business Unit', onClick: openAddBU } : undefined}
+                    />
+                  )}
+
+                  {!loadingBUs && !errorBUs && businessUnits.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-xs uppercase tracking-wide text-slate">
+                            <th className="py-2 pr-2 font-medium">Code</th>
+                            <th className="py-2 pr-2 font-medium">Name</th>
+                            <th className="py-2 pr-2 font-medium">State</th>
+                            <th className="py-2 pr-2 font-medium">GSTIN</th>
+                            <th className="py-2 pr-2 font-medium">Status</th>
+                            <th className="py-2 pr-2 font-medium">Created</th>
+                            <th className="py-2 pr-2 font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {businessUnits.map((bu) => (
+                            <tr key={bu.id} className="border-b border-border last:border-0 hover:bg-offwhite">
+                              <td className="py-2 pr-2 font-mono text-navy">{bu.code}</td>
+                              <td className="py-2 pr-2">{bu.name}</td>
+                              <td className="py-2 pr-2">{stateLabel(bu.stateCode)}</td>
+                              <td className="py-2 pr-2 font-mono">{bu.gstin || 'Not set'}</td>
+                              <td className="py-2 pr-2">
+                                <StatusBadge isActive={bu.isActive} />
+                              </td>
+                              <td className="py-2 pr-2">{formatDate(bu.createdAt)}</td>
+                              <td className="py-2 pr-2">
+                                {canManage && (
+                                  <Button
+                                    variant="secondary"
+                                    className="px-2 py-1 text-xs"
+                                    onClick={() => openEditBU(bu)}
+                                    aria-label={`Edit ${bu.name}`}
+                                  >
+                                    Edit
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+
+      {editingLE && (
         <LegalEntityEditPanel
-          legalEntity={legalEntity}
-          onClose={() => setShowEditLE(false)}
-          onSaved={(updated) => setLegalEntity(updated)}
+          legalEntity={editingLE}
+          onClose={() => setEditingLE(null)}
+          onSaved={(updated) =>
+            setLegalEntities((prev) => prev.map((le) => (le.id === updated.id ? updated : le)))
+          }
         />
+      )}
+
+      {showAddLEModal && (
+        <AddLegalEntityModal
+          onClose={() => setShowAddLEModal(false)}
+          onCreated={(created) => loadLegalEntities(created.id)}
+        />
+      )}
+
+      {showCreateLedgerModal && selectedLE && (
+        <CreateLedgerModal
+          legalEntity={selectedLE}
+          onClose={() => setShowCreateLedgerModal(false)}
+          onCreated={() => loadLedgerAndCalendar(selectedLE.id)}
+        />
+      )}
+
+      {showCreateCalendarModal && ledger && (
+        <CreateCalendarModal
+          ledger={ledger}
+          onClose={() => setShowCreateCalendarModal(false)}
+          onCreated={() => selectedLEId && loadLedgerAndCalendar(selectedLEId)}
+        />
+      )}
+
+      {showGenerateNextConfirm && calendar && (
+        <Modal
+          title="Generate Next Fiscal Year"
+          onClose={() => setShowGenerateNextConfirm(false)}
+          footer={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => setShowGenerateNextConfirm(false)}
+                disabled={generatingNext}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleGenerateNext} loading={generatingNext}>
+                Yes, Generate
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-slate">
+            Generate periods for the next fiscal year on calendar "{calendar.name}"?
+          </p>
+        </Modal>
       )}
 
       {showBUModal && (

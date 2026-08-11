@@ -317,6 +317,13 @@ export async function searchDimensionValues(ledgerId: string, code: string) {
   return data.data;
 }
 
+export async function listLegalEntities(businessGroupId: string) {
+  const { data } = await api.get<ApiResponse<LegalEntity[]>>('/api/v1/gl/legal-entities', {
+    params: { businessGroupId },
+  });
+  return data.data;
+}
+
 export async function getLegalEntity(legalEntityId: string) {
   const { data } = await api.get<ApiResponse<LegalEntity>>(
     `/api/v1/gl/legal-entities/${legalEntityId}`,
@@ -324,13 +331,76 @@ export async function getLegalEntity(legalEntityId: string) {
   return data.data;
 }
 
+export async function createLegalEntity(body: {
+  businessGroupId: string;
+  code: string;
+  name: string;
+  accountingStandard?: string;
+  tan?: string;
+}) {
+  const { data } = await api.post<ApiResponse<LegalEntity>>('/api/v1/gl/legal-entities', body);
+  return data.data;
+}
+
 export async function updateLegalEntity(
   legalEntityId: string,
   body: { name: string; accountingStandard: string; tan?: string },
 ) {
-  const { data } = await api.put<ApiResponse<LegalEntity>>(
+  const { data } = await api.patch<ApiResponse<LegalEntity>>(
     `/api/v1/gl/legal-entities/${legalEntityId}`,
     body,
+  );
+  return data.data;
+}
+
+export async function createLedger(body: {
+  code: string;
+  name: string;
+  description?: string;
+  financeMode: string;
+  ledgerCategory?: string;
+  functionalCurrency?: string;
+  accountingStandard?: string;
+}) {
+  const { data } = await api.post<ApiResponse<Ledger>>('/api/v1/gl/ledgers', body);
+  return data.data;
+}
+
+export async function linkLegalEntityLedger(body: {
+  legalEntityId: string;
+  ledgerId: string;
+  ledgerCategory?: string;
+}) {
+  const { data } = await api.post<ApiResponse<unknown>>('/api/v1/gl/legal-entity-ledgers', body);
+  return data.data;
+}
+
+export async function createCalendar(body: {
+  ledgerId: string;
+  name: string;
+  description?: string;
+  fiscalYearStartMonth?: number;
+  fiscalYearStartDay?: number;
+  periodType?: string;
+  initialFiscalYear?: number;
+}) {
+  const { data } = await api.post<ApiResponse<AccountingCalendar>>(
+    '/api/v1/gl/accounting-calendars',
+    body,
+  );
+  return data.data;
+}
+
+export async function generateInitialPeriods(calendarId: string) {
+  const { data } = await api.post<ApiResponse<unknown>>(
+    `/api/v1/gl/accounting-calendars/${calendarId}/periods/generate`,
+  );
+  return data.data;
+}
+
+export async function generateNextYearPeriods(calendarId: string) {
+  const { data } = await api.post<ApiResponse<unknown>>(
+    `/api/v1/gl/accounting-calendars/${calendarId}/periods/generate-next`,
   );
   return data.data;
 }

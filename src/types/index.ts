@@ -282,9 +282,18 @@ export interface PeriodStatus {
 
 export interface Ledger {
   id: string;
+  legalEntityId?: string;
+  code?: string;
   ledgerName: string;
+  description?: string | null;
+  financeMode?: string;
+  ledgerCategory?: string;
   currency: string;
+  accountingStandard?: string;
+  isActive?: boolean;
   allowDynamicInsert?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AccountCombination {

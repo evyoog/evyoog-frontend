@@ -281,3 +281,52 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - NATURAL_ACCOUNT and required dimensions excluded from default buttons
 - JournalEntryPage pre-selects default values on addLine()
 - Dropdown shows "(default)" hint next to default option
+
+## Enterprise Structure — Full Setup Screen (August 2026)
+- EnterpriseStructurePage.tsx rebuilt as a 3-tab screen (Legal Entities /
+  Ledger & Calendar / Business Units) with create flows for Legal Entity,
+  Ledger, and Accounting Calendar, plus a setup-completeness banner.
+- BUSINESS_GROUP_ID hardcoded in the page ('c1338b23-c1e6-4f4e-9d87-8e60b49bb432')
+  for Phase 1 single-tenant — Tab 1 lists all Legal Entities under this
+  business group via new `listLegalEntities(businessGroupId)`.
+- No Tabs component existed in src/components/ui — built as a plain inline
+  button tab-bar (border-bottom active-state), not extracted to a shared
+  component since this is the only tabbed screen so far.
+- `Ledger` type (src/types/index.ts) extended with optional fields
+  (legalEntityId, code, description, financeMode, ledgerCategory,
+  accountingStandard, isActive, createdAt, updatedAt) beyond the previously
+  typed { id, ledgerName, currency, allowDynamicInsert }. All new fields are
+  optional so the 5 existing pages that only read `.id`/`.ledgerName`/
+  `.allowDynamicInsert` off listLedgers() are unaffected.
+- CreateLedgerRequest body key is `functionalCurrency` (per build spec) but
+  the Ledger GET response field remains `currency` (already consumed by
+  ChartOfAccountsPage, AccountLedgerPage, TrialBalancePage,
+  FinanceDimensionsPage, PeriodManagementPage) — the ledger card renders
+  `ledger.currency`, not `functionalCurrency`.
+- Ledger creation is 2 steps (createLedger, then linkLegalEntityLedger). The
+  link body hardcodes `ledgerCategory: "PRIMARY"` per the build spec's
+  literal example, even though the Ledger's own "Ledger Category" field in
+  the create modal may be set to SECONDARY/REPORTING/ENCUMBRANCE — that
+  value is stored on the ledger entity itself; only the LE↔ledger link
+  defaults to PRIMARY. If ledger creation succeeds but the link fails, the
+  ledger is kept (not deleted) and an error toast is shown, per spec.
+- Calendar creation auto-calls `generateInitialPeriods`; if that fails the
+  calendar itself is kept (not deleted) — a warning toast tells the user to
+  retry period generation from this screen (no retry-generate button was
+  built since the create-calendar happy path already covers the demo flow).
+- `updateLegalEntity` switched from PUT to PATCH per the build spec's
+  explicit note — no other callers depended on PUT.
+- Tab 2/3 operate on a `selectedLEId`, not always the logged-in user's own
+  legal entity: it defaults to `user.legalEntityId` (or the first LE in the
+  business group's list if that ID isn't present) and can be changed via
+  "View Details" → "View Ledger →" / "View Business Units →" quick links on
+  a Legal Entity card in Tab 1.
+- LE "Detail view" is an inline expand/collapse on the card itself (no
+  separate route), since Option B didn't specify a dedicated detail screen.
+- getAccountingCalendar 404 (no calendar yet for a ledger) is treated as a
+  "No Calendar Configured" empty state, not a page-level error — same
+  fail-soft pattern used elsewhere (GST card, KPI trial-balance lookup).
+- Demo flow (create LE → Ledger → Calendar → BU) was verified via `tsc -b`
+  (clean), `vite build` (clean), and `oxlint` (no new warnings) only — the
+  backend wasn't running and no browser-automation tool was available in
+  this environment, so the actual click-through was not exercised live.
