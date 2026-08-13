@@ -330,3 +330,52 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   (clean), `vite build` (clean), and `oxlint` (no new warnings) only — the
   backend wasn't running and no browser-automation tool was available in
   this environment, so the actual click-through was not exercised live.
+
+## COA Structure Screen (August 2026)
+- CoaStructurePage.tsx (/coa-structure) — card-based list of CoaStructure
+  records for BUSINESS_GROUP_ID ('c1338b23-c1e6-4f4e-9d87-8e60b49bb432',
+  same Phase 1 constant as EnterpriseStructurePage), Add COA Structure
+  modal, and an Edit slide-over with an inline Segment Manager.
+- New shared helpers in src/utils/coaStructure.ts: OPTIONAL_DIMENSION_TYPES
+  (all segment dimension types except NATURAL_ACCOUNT, which is always
+  Segment 1), dimensionTypeLabel, autoSegmentCode, dimensionTypeBadgeClass,
+  buildCombinationPreview. Shared between CoaStructurePage.tsx and
+  CoaStructureEditPanel.tsx so segment-code/label generation can't drift
+  between the create and edit flows.
+- Combination format (`[NAT-ACCT].[COST-CTR].[PRODUCT]`) is fetched per
+  structure via GET /coa-structures/{id}/combination-format after the list
+  loads (Promise.all, keyed by structure id in a `formats` map). If that
+  call fails for a given structure, the format falls back to a locally
+  built preview from that structure's own segments/separator rather than
+  leaving the field blank.
+- The Add COA Structure modal is a single scrollable form (structure
+  details + segment builder together), not a literal two-step wizard —
+  consistent with every other "Add X" modal already in this codebase
+  (e.g. AccountCombinationsPage, DimensionValuesPanel), none of which use
+  a multi-step Modal component. Segment 1 (Natural Account) is pre-filled
+  and locked; "+ Add Segment" appends the next unused dimension type from
+  OPTIONAL_DIMENSION_TYPES and auto-fills its code/name (user-editable
+  after); the button disables once all 12 optional types are in use.
+- CoaStructureEditPanel.tsx (src/components/, not src/pages/) follows the
+  same slide-over shell as DimensionValuesPanel.tsx (fixed inset-0 +
+  translate-x transition). Code, separator, and dimension type are
+  read-only after creation per spec; only name/description/isActive are
+  editable via a "Save Changes" button. Segment add/remove act directly
+  through addCoaSegment/removeCoaSegment and then refetch the structure
+  (getCoaStructure) to stay in sync — not optimistic local state — since
+  segmentNumber and valueCount are backend-derived.
+- Removing a segment is blocked in the UI for dimensionType ===
+  'NATURAL_ACCOUNT' (no Remove button rendered) since Segment 1 can never
+  be removed; all other segments get the same inline Yes/No confirmation
+  pattern used elsewhere (AccountCombinationsPage deactivate,
+  DimensionValuesPanel set-default).
+- assignCoaStructureToLedger was added to gl.ts per the spec's required
+  API list but has no UI entry point on this screen — the build spec's
+  card mockup only *displays* assignedLedgerCount, it doesn't wire up an
+  "Assign to Ledger" action, so no button was added (avoids scope creep
+  beyond the documented layout).
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no
+  warnings), and a dev-server boot check that GET /coa-structure returns
+  200. The backend wasn't running in this environment, so the live
+  create/edit/segment-manager flows against real API data were not
+  exercised — same limitation as the Enterprise Structure build above.

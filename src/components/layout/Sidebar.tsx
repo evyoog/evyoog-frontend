@@ -36,6 +36,7 @@ const navSections: NavSection[] = [
   {
     title: 'Accounting Configuration',
     items: [
+      { label: 'COA Structure', to: '/coa-structure', permission: 'gl:ledger:view' },
       { label: 'Ledger Setup', to: '/ledger-setup', permission: 'gl:ledger:view' },
       { label: 'Finance Dimensions', to: '/finance-dimensions', permission: 'gl:dimension:view' },
       { label: 'Chart of Accounts', to: '/chart-of-accounts', permission: 'gl:accounts:view' },

@@ -314,6 +314,32 @@ export interface AccountCombination {
   updatedBy: string;
 }
 
+export interface CoaSegmentSummary {
+  id: string;
+  code: string;
+  name: string;
+  dimensionType: string;
+  segmentNumber: number;
+  isRequired: boolean;
+  valueCount: number;
+}
+
+export interface CoaStructure {
+  id: string;
+  businessGroupId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  separator: string;
+  segmentCount: number;
+  segments: CoaSegmentSummary[];
+  assignedLedgerCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
 export interface AccountingPeriod {
   id: string;
   accountingCalendarId: string;

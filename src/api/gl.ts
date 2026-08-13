@@ -11,6 +11,7 @@ import type {
   CashFlowReport,
   ChartOfAccountsResponse,
   CoaImportResult,
+  CoaStructure,
   CreateJournalRequest,
   DimensionValue,
   FinanceDimension,
@@ -508,6 +509,83 @@ export async function importChartOfAccounts(
     '/api/v1/gl/coa-import-jobs',
     formData,
     { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data;
+}
+
+export async function listCoaStructures(businessGroupId: string) {
+  const { data } = await api.get<ApiResponse<CoaStructure[]>>('/api/v1/gl/coa-structures', {
+    params: { businessGroupId },
+  });
+  return data.data;
+}
+
+export async function getCoaStructure(id: string) {
+  const { data } = await api.get<ApiResponse<CoaStructure>>(`/api/v1/gl/coa-structures/${id}`);
+  return data.data;
+}
+
+export async function getCoaStructureByLedger(ledgerId: string) {
+  const { data } = await api.get<ApiResponse<CoaStructure>>(
+    `/api/v1/gl/coa-structures/by-ledger/${ledgerId}`,
+  );
+  return data.data;
+}
+
+export async function getCoaCombinationFormat(id: string) {
+  const { data } = await api.get<ApiResponse<string>>(
+    `/api/v1/gl/coa-structures/${id}/combination-format`,
+  );
+  return data.data;
+}
+
+export interface CreateCoaSegmentRequest {
+  code: string;
+  name: string;
+  dimensionType: string;
+  segmentNumber: number;
+  isRequired: boolean;
+}
+
+export async function createCoaStructure(body: {
+  businessGroupId: string;
+  code: string;
+  name: string;
+  description?: string;
+  separator?: string;
+  segments: CreateCoaSegmentRequest[];
+}) {
+  const { data } = await api.post<ApiResponse<CoaStructure>>('/api/v1/gl/coa-structures', body);
+  return data.data;
+}
+
+export async function updateCoaStructure(
+  id: string,
+  body: { name: string; description?: string; isActive?: boolean },
+) {
+  const { data } = await api.put<ApiResponse<CoaStructure>>(`/api/v1/gl/coa-structures/${id}`, body);
+  return data.data;
+}
+
+export async function addCoaSegment(id: string, body: CreateCoaSegmentRequest) {
+  const { data } = await api.post<ApiResponse<CoaStructure>>(
+    `/api/v1/gl/coa-structures/${id}/segments`,
+    body,
+  );
+  return data.data;
+}
+
+export async function removeCoaSegment(id: string, financeDimensionId: string) {
+  const { data } = await api.delete<ApiResponse<CoaStructure>>(
+    `/api/v1/gl/coa-structures/${id}/segments/${financeDimensionId}`,
+  );
+  return data.data;
+}
+
+export async function assignCoaStructureToLedger(id: string, ledgerId: string) {
+  const { data } = await api.post<ApiResponse<CoaStructure>>(
+    `/api/v1/gl/coa-structures/${id}/assign-ledger`,
+    { ledgerId },
   );
   return data.data;
 }

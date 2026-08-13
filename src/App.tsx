@@ -16,6 +16,7 @@ import PeriodManagementPage from './pages/PeriodManagementPage';
 import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 import AccountCombinationsPage from './pages/AccountCombinationsPage';
+import CoaStructurePage from './pages/CoaStructurePage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
@@ -137,6 +138,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <AccountCombinationsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/coa-structure"
+              element={
+                <ProtectedRoute>
+                  <CoaStructurePage />
                 </ProtectedRoute>
               }
             />
