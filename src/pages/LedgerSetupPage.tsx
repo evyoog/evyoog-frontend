@@ -816,12 +816,17 @@ function LedgerCard({
         ) : (
           <p className="text-sm text-slate">COA Structure: Not assigned</p>
         )}
-        {canManage && (
+        {canManage && leLinks.length === 0 && (
           <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={onAssignCoa}>
             {coaStructure ? 'Change' : '+ Assign COA Structure'}
           </Button>
         )}
       </div>
+      {canManage && leLinks.length > 0 && (
+        <p className="text-xs text-slate">
+          COA Structure is locked once a Ledger is assigned to a Legal Entity
+        </p>
+      )}
 
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <p className="text-sm text-slate">
