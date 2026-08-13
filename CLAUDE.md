@@ -379,3 +379,64 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   200. The backend wasn't running in this environment, so the live
   create/edit/segment-manager flows against real API data were not
   exercised — same limitation as the Enterprise Structure build above.
+
+## Ledger Setup Screen (August 2026)
+- LedgerSetupPage.tsx (/ledger-setup) — card-based list of Ledgers for
+  `user.legalEntityId`, each showing Finance Mode/Currency/Standard/
+  Category, COA Structure assignment, Dynamic Insert toggle, Calendar
+  status, and Legal Entity assignment, plus a 3-step "Add Ledger" wizard
+  (Details → Assign COA Structure → Create Calendar, steps 2/3 skippable).
+- This build's spec asserted the live GET /ledgers response uses `name`/
+  `functionalCurrency`/`coaStructureId`, which conflicts with the `Ledger`
+  type's existing required `ledgerName`/`currency` fields (confirmed live
+  and already consumed by 3 pages — see Enterprise Structure section
+  above). Rather than trust one spec over the other and risk breaking
+  existing consumers, `Ledger` was extended with new **optional** fields
+  (`name`, `functionalCurrency`, `coaStructureId`) alongside the existing
+  ones. New display code reads `ledger.name ?? ledger.ledgerName` and
+  `ledger.functionalCurrency ?? ledger.currency` via helpers
+  `ledgerDisplayName()`/`ledgerCurrency()` in LedgerSetupPage.tsx, so the
+  page works regardless of which field name the backend actually sends.
+  Worth re-confirming against a live backend and collapsing to one field
+  name once verified.
+- "Assigned to Legal Entity" has no reverse-lookup-by-ledger endpoint (only
+  GET /legal-entity-ledgers?legalEntityId, scoped to one LE). To correctly
+  show assignment for ledgers linked to *any* legal entity (not just the
+  logged-in user's own LE — needed for the documented demo flow, which
+  assigns a newly created ledger to a different LE), loadAll() fetches
+  listLegalEntityLedgers for every Legal Entity in the business group
+  (Promise.all) and flattens the results into one lookup map keyed by
+  ledgerId, rather than a single call scoped to `user.legalEntityId`.
+- Calendar creation (wizard step 3 and the inline "Create Calendar" modal)
+  only collects Name / Fiscal Year Start Month / Period Type / Initial
+  Fiscal Year, per this spec's field list — `fiscalYearStartDay` is not a
+  form field here (unlike Enterprise Structure's calendar modal) and is
+  hardcoded to `1`.
+- Period Type options are MONTHLY/QUARTERLY only for this screen (per
+  spec), narrower than Enterprise Structure's calendar modal which also
+  offers FISCAL_4_4_5 — each page keeps its own local constant.
+- Calendar card display omits a computed "April 1 → March 31" date range
+  (shown in the build spec's mockup) since `AccountingCalendar` has no
+  end-date field — only `fiscalYearStartMonth`/`fiscalYearStartDay` are
+  known, and deriving an end date would require guessing day-of-month
+  math. Shows Period Type / periods-per-year / current FY / generated
+  count instead, matching the existing Enterprise Structure calendar card.
+- "Generate Next FY" confirm dialog uses the calendar's `name` in its
+  confirmation text ("periods on calendar '{name}'?") rather than
+  computing/guessing the next fiscal year label, since
+  `AccountingCalendar.currentFiscalYear`'s exact string format isn't
+  confirmed — same wording already used in Enterprise Structure's confirm.
+- Dynamic Insert toggle reuses AccountCombinationsPage's exact
+  confirm-before-OFF pattern (turn ON is immediate, turn OFF requires an
+  inline Yes/No), condensed into a single handler prop
+  (`onRequestToggleOff`) that sets the confirm flag on first click and
+  performs the toggle on the second (confirming) click.
+- `getLedger` was added to gl.ts per convention (mirrors `getCoaStructure`)
+  but has no call site on this screen — the page only ever needs the list
+  response; kept for parity/future use, not wired to a route.
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no
+  warnings), and a dev-server boot check that GET /ledger-setup returns
+  200. The backend wasn't running in this environment (curl to :8080
+  returned no response), so the live wizard/assign/toggle/calendar flows
+  against real API data were not exercised — same limitation as the
+  Enterprise Structure and COA Structure builds above.

@@ -285,15 +285,31 @@ export interface Ledger {
   legalEntityId?: string;
   code?: string;
   ledgerName: string;
+  name?: string;
   description?: string | null;
   financeMode?: string;
   ledgerCategory?: string;
   currency: string;
+  functionalCurrency?: string;
   accountingStandard?: string;
+  coaStructureId?: string | null;
   isActive?: boolean;
   allowDynamicInsert?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface LegalEntityLedger {
+  id: string;
+  legalEntityId: string;
+  legalEntityName: string;
+  ledgerId: string;
+  ledgerName: string;
+  ledgerCode: string;
+  financeMode: string;
+  ledgerCategory: string;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface AccountCombination {

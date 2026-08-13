@@ -20,6 +20,7 @@ import type {
   JournalSource,
   Ledger,
   LegalEntity,
+  LegalEntityLedger,
   Page,
   PeriodStatus,
   PLBySegmentReport,
@@ -349,6 +350,35 @@ export async function updateLegalEntity(
 ) {
   const { data } = await api.patch<ApiResponse<LegalEntity>>(
     `/api/v1/gl/legal-entities/${legalEntityId}`,
+    body,
+  );
+  return data.data;
+}
+
+export async function getLedger(ledgerId: string) {
+  const { data } = await api.get<ApiResponse<Ledger>>(`/api/v1/gl/ledgers/${ledgerId}`);
+  return data.data;
+}
+
+export async function updateLedger(ledgerId: string, body: { name: string; description?: string }) {
+  const { data } = await api.put<ApiResponse<Ledger>>(`/api/v1/gl/ledgers/${ledgerId}`, body);
+  return data.data;
+}
+
+export async function listLegalEntityLedgers(legalEntityId: string) {
+  const { data } = await api.get<ApiResponse<LegalEntityLedger[]>>(
+    '/api/v1/gl/legal-entity-ledgers',
+    { params: { legalEntityId } },
+  );
+  return data.data;
+}
+
+export async function updateCalendar(
+  calendarId: string,
+  body: { name: string; description?: string },
+) {
+  const { data } = await api.put<ApiResponse<AccountingCalendar>>(
+    `/api/v1/gl/accounting-calendars/${calendarId}`,
     body,
   );
   return data.data;

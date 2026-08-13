@@ -17,6 +17,7 @@ import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 import AccountCombinationsPage from './pages/AccountCombinationsPage';
 import CoaStructurePage from './pages/CoaStructurePage';
+import LedgerSetupPage from './pages/LedgerSetupPage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
@@ -146,6 +147,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <CoaStructurePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ledger-setup"
+              element={
+                <ProtectedRoute>
+                  <LedgerSetupPage />
                 </ProtectedRoute>
               }
             />
