@@ -441,6 +441,58 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   against real API data were not exercised — same limitation as the
   Enterprise Structure and COA Structure builds above.
 
+## LE↔Ledger Assignment moved to Enterprise Structure (August 2026)
+- LE↔Ledger assignment is now a single-owner flow: created/edited only from
+  Enterprise Structure Tab 1 ("Assign Ledger" on each Legal Entity card).
+  LedgerSetupPage.tsx's "Assign to Legal Entity" button/modal
+  (`AssignToLegalEntityModal`, `assignLELedger` state,
+  `ASSIGN_LEDGER_CATEGORIES` constant, the `linkLegalEntityLedger` import)
+  were removed entirely. The ledger card's assignment section is now
+  read-only: 0 links → grey "Not assigned to any Legal Entity", 1 link →
+  "Assigned to: {name}", 2+ → "Assigned to: {count} Legal Entities" (no
+  per-name list, per the build ask). `listLegalEntityLedgers` is still
+  called per Legal Entity (unchanged aggregation pattern) purely to
+  render this read-only status — `LedgerCard` takes `leLinks:
+  LegalEntityLedger[]` instead of a single `leLink`. The now-unused
+  `legalEntities`/`listLegalEntities` fetch on this page was removed too
+  (it existed only to populate the deleted modal's LE dropdown).
+- EnterpriseStructurePage.tsx Tab 1 gained the inverse action: an "Assign
+  Ledger" button on every LE card, opening `AssignLedgerModal` (Ledger
+  dropdown + Ledger Category dropdown, POST via the same
+  `linkLegalEntityLedger`). The Ledger dropdown is sourced from
+  `listLedgers()` called with **no** `legalEntityId` — `gl.ts`'s
+  `listLedgers` signature changed from `(legalEntityId: string)` to
+  `(legalEntityId?: string)` (params omitted when absent) so this one
+  call can return every ledger in the system for the assign picker,
+  while every existing scoped caller is unaffected. Loaded once on mount
+  into an `allLedgers` state, independent of `selectedLEId`.
+  `ledgerDisplayName()`/`ledgerCurrency()` helpers (reading
+  `ledger.name ?? ledger.ledgerName` / `functionalCurrency ?? currency`)
+  are duplicated here from LedgerSetupPage.tsx, matching this codebase's
+  existing per-file small-helper convention.
+- Each Tab 1 LE card also now shows "Assigned Ledger: {code} {name}" (or
+  an amber-dot "Not assigned" indicator) sourced from a new
+  `leLedgerLinks: Record<legalEntityId, LegalEntityLedger[]>` map,
+  populated inside `loadLegalEntities()` via
+  `Promise.all(data.map(le => listLegalEntityLedgers(le.id)))` right
+  after the LE list loads (same shape as LedgerSetupPage's aggregation).
+  Only the first link is shown on the card (singular "Assigned Ledger"
+  per the build ask); `onAssigned` on the new modal re-runs
+  `loadLegalEntities()` so both the LE list and this map refresh
+  together.
+- Tab 2's "No Ledger Assigned" empty state now carries two distinct
+  pieces of guidance rather than one: the literal instructional line
+  ("No Ledger assigned. Assign a Ledger from the Legal Entities tab.")
+  plus the pre-existing `/ledger-setup` link, reworded to "Create a
+  Ledger in Ledger Setup →". These serve different cases — assigning an
+  *existing* ledger (now a Tab 1 action) vs. creating a brand new one
+  (still only possible in Ledger Setup) — so both were kept on the same
+  card instead of picking one.
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no
+  warnings), and boot checks on both `/enterprise` and `/ledger-setup`
+  (200). No backend was running, so the live assign/unassign round trip
+  wasn't exercised against real data.
+
 ## Enterprise Structure — Selected LE context fix (August 2026)
 - EnterpriseStructurePage.tsx already had a `selectedLEId` state (default
   `user?.legalEntityId`) driving Tab 2/3 loads — the actual bug was that

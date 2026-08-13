@@ -15,17 +15,10 @@ import {
   toggleDynamicInsert,
   assignCoaStructureToLedger,
   listLegalEntityLedgers,
-  linkLegalEntityLedger,
   listCoaStructures,
   listLegalEntities,
 } from '../api/gl';
-import type {
-  Ledger,
-  AccountingCalendar,
-  LegalEntityLedger,
-  CoaStructure,
-  LegalEntity,
-} from '../types';
+import type { Ledger, AccountingCalendar, LegalEntityLedger, CoaStructure } from '../types';
 import { formatDate } from '../utils/format';
 import { buildCombinationPreview } from '../utils/coaStructure';
 
@@ -37,7 +30,6 @@ const FINANCE_MODE_OPTIONS = [
   { value: 'EVENT_ONLY', description: 'Event capture without GL posting' },
 ];
 const LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY', 'REPORTING', 'ENCUMBRANCE'];
-const ASSIGN_LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY'];
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'SGD', 'AED'];
 const ACCOUNTING_STANDARDS = ['IND_AS', 'IGAAP', 'IFRS', 'US_GAAP'];
 const PERIOD_TYPES = ['MONTHLY', 'QUARTERLY'];
@@ -619,86 +611,6 @@ function CreateCalendarModal({
   );
 }
 
-function AssignToLegalEntityModal({
-  ledger,
-  legalEntities,
-  onClose,
-  onAssigned,
-}: {
-  ledger: Ledger;
-  legalEntities: LegalEntity[];
-  onClose: () => void;
-  onAssigned: () => void;
-}) {
-  const { showToast } = useToast();
-  const [legalEntityId, setLegalEntityId] = useState('');
-  const [ledgerCategory, setLedgerCategory] = useState('PRIMARY');
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!legalEntityId) return;
-    setSaving(true);
-    try {
-      await linkLegalEntityLedger({ legalEntityId, ledgerId: ledger.id, ledgerCategory });
-      showToast('Ledger assigned to legal entity successfully.', 'success');
-      onAssigned();
-      onClose();
-    } catch (err) {
-      showToast(apiErrorMessage(err, 'Failed to assign ledger to legal entity. Please try again.'), 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      title="Assign to Legal Entity"
-      subtitle={ledgerDisplayName(ledger)}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} loading={saving} disabled={!legalEntityId}>
-            Assign
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <Select
-          id="assign-le"
-          label="Legal Entity"
-          required
-          value={legalEntityId}
-          onChange={(e) => setLegalEntityId(e.target.value)}
-        >
-          <option value="">Select a legal entity</option>
-          {legalEntities.map((le) => (
-            <option key={le.id} value={le.id}>
-              {le.name} ({le.code})
-            </option>
-          ))}
-        </Select>
-        <Select
-          id="assign-le-category"
-          label="Ledger Category"
-          required
-          value={ledgerCategory}
-          onChange={(e) => setLedgerCategory(e.target.value)}
-        >
-          {ASSIGN_LEDGER_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </div>
-    </Modal>
-  );
-}
-
 function EditLedgerPanel({
   ledger,
   canManage,
@@ -838,7 +750,7 @@ function EditLedgerPanel({
 function LedgerCard({
   ledger,
   calendar,
-  leLink,
+  leLinks,
   coaStructure,
   canManage,
   confirmingToggleOff,
@@ -849,12 +761,11 @@ function LedgerCard({
   onAssignCoa,
   onCreateCalendar,
   onGenerateNext,
-  onAssignLE,
   onEdit,
 }: {
   ledger: Ledger;
   calendar: AccountingCalendar | null;
-  leLink: LegalEntityLedger | null;
+  leLinks: LegalEntityLedger[];
   coaStructure: CoaStructure | null;
   canManage: boolean;
   confirmingToggleOff: boolean;
@@ -865,7 +776,6 @@ function LedgerCard({
   onAssignCoa: () => void;
   onCreateCalendar: () => void;
   onGenerateNext: () => void;
-  onAssignLE: () => void;
   onEdit: () => void;
 }) {
   return (
@@ -979,19 +889,16 @@ function LedgerCard({
       </div>
 
       <div className="mt-3 border-t border-border pt-3">
-        {leLink ? (
+        {leLinks.length === 0 && <p className="text-sm text-slate">🏢 Not assigned to any Legal Entity</p>}
+        {leLinks.length === 1 && (
           <p className="text-sm text-slate">
-            🏢 Assigned to: <span className="font-medium text-navy">{leLink.legalEntityName}</span>
+            🏢 Assigned to: <span className="font-medium text-navy">{leLinks[0].legalEntityName}</span>
           </p>
-        ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate">🏢 Not assigned to any Legal Entity</p>
-            {canManage && (
-              <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={onAssignLE}>
-                Assign to Legal Entity
-              </Button>
-            )}
-          </div>
+        )}
+        {leLinks.length > 1 && (
+          <p className="text-sm text-slate">
+            🏢 Assigned to: <span className="font-medium text-navy">{leLinks.length} Legal Entities</span>
+          </p>
         )}
       </div>
 
@@ -1015,7 +922,6 @@ export default function LedgerSetupPage() {
   const [calendarsByLedgerId, setCalendarsByLedgerId] = useState<Record<string, AccountingCalendar | null>>({});
   const [leLinks, setLeLinks] = useState<LegalEntityLedger[]>([]);
   const [coaStructures, setCoaStructures] = useState<CoaStructure[]>([]);
-  const [legalEntities, setLegalEntities] = useState<LegalEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -1024,7 +930,6 @@ export default function LedgerSetupPage() {
   const [createCalendarLedger, setCreateCalendarLedger] = useState<Ledger | null>(null);
   const [generateNextLedger, setGenerateNextLedger] = useState<Ledger | null>(null);
   const [generatingNext, setGeneratingNext] = useState(false);
-  const [assignLELedger, setAssignLELedger] = useState<Ledger | null>(null);
   const [editingLedger, setEditingLedger] = useState<Ledger | null>(null);
   const [confirmToggleOffId, setConfirmToggleOffId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -1041,7 +946,6 @@ export default function LedgerSetupPage() {
       ]);
       setLedgers(ledgerList);
       setCoaStructures(coaList);
-      setLegalEntities(leList);
 
       const [calendarEntries, leLinksNested] = await Promise.all([
         Promise.all(
@@ -1112,7 +1016,12 @@ export default function LedgerSetupPage() {
     }
   };
 
-  const leLinkByLedgerId = new Map(leLinks.map((l) => [l.ledgerId, l]));
+  const leLinksByLedgerId = new Map<string, LegalEntityLedger[]>();
+  for (const link of leLinks) {
+    const existing = leLinksByLedgerId.get(link.ledgerId);
+    if (existing) existing.push(link);
+    else leLinksByLedgerId.set(link.ledgerId, [link]);
+  }
   const coaStructureById = new Map(coaStructures.map((s) => [s.id, s]));
 
   return (
@@ -1154,7 +1063,7 @@ export default function LedgerSetupPage() {
                 key={ledger.id}
                 ledger={ledger}
                 calendar={calendarsByLedgerId[ledger.id] ?? null}
-                leLink={leLinkByLedgerId.get(ledger.id) ?? null}
+                leLinks={leLinksByLedgerId.get(ledger.id) ?? []}
                 coaStructure={ledger.coaStructureId ? coaStructureById.get(ledger.coaStructureId) ?? null : null}
                 canManage={canManage}
                 confirmingToggleOff={confirmToggleOffId === ledger.id}
@@ -1169,7 +1078,6 @@ export default function LedgerSetupPage() {
                 onAssignCoa={() => setAssignCoaLedger(ledger)}
                 onCreateCalendar={() => setCreateCalendarLedger(ledger)}
                 onGenerateNext={() => setGenerateNextLedger(ledger)}
-                onAssignLE={() => setAssignLELedger(ledger)}
                 onEdit={() => setEditingLedger(ledger)}
               />
             ))}
@@ -1222,15 +1130,6 @@ export default function LedgerSetupPage() {
             {calendarsByLedgerId[generateNextLedger.id]?.name}"?
           </p>
         </Modal>
-      )}
-
-      {assignLELedger && (
-        <AssignToLegalEntityModal
-          ledger={assignLELedger}
-          legalEntities={legalEntities}
-          onClose={() => setAssignLELedger(null)}
-          onAssigned={loadAll}
-        />
       )}
 
       {editingLedger && (

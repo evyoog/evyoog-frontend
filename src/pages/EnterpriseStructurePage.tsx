@@ -15,10 +15,12 @@ import {
   generateNextYearPeriods,
   getAccountingCalendar,
   getPeriodStatus,
+  linkLegalEntityLedger,
   listAccountingPeriods,
   listBusinessUnits,
   listLedgers,
   listLegalEntities,
+  listLegalEntityLedgers,
   updateBusinessUnit,
   updateLegalEntity,
 } from '../api/gl';
@@ -27,6 +29,7 @@ import type {
   BusinessUnit,
   Ledger,
   LegalEntity,
+  LegalEntityLedger,
   PeriodRow,
   PeriodStatusValue,
 } from '../types';
@@ -35,6 +38,15 @@ import { formatDate } from '../utils/format';
 const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
 
 const ACCOUNTING_STANDARDS = ['IND_AS', 'IGAAP', 'IFRS', 'US_GAAP'];
+const LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY', 'REPORTING', 'ENCUMBRANCE'];
+
+function ledgerDisplayName(l: Ledger): string {
+  return l.name ?? l.ledgerName;
+}
+
+function ledgerCurrency(l: Ledger): string {
+  return l.functionalCurrency ?? l.currency;
+}
 
 const INDIAN_STATES = [
   { code: '01', name: 'Jammu & Kashmir' },
@@ -387,6 +399,85 @@ function AddLegalEntityModal({
   );
 }
 
+function AssignLedgerModal({
+  legalEntity,
+  ledgers,
+  onClose,
+  onAssigned,
+}: {
+  legalEntity: LegalEntity;
+  ledgers: Ledger[];
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const { showToast } = useToast();
+  const [ledgerId, setLedgerId] = useState('');
+  const [ledgerCategory, setLedgerCategory] = useState('PRIMARY');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!ledgerId) return;
+    setSaving(true);
+    try {
+      await linkLegalEntityLedger({ legalEntityId: legalEntity.id, ledgerId, ledgerCategory });
+      showToast('Ledger assigned successfully', 'success');
+      onAssigned();
+      onClose();
+    } catch {
+      showToast('Failed to assign ledger. Please try again.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      title={`Assign Ledger to ${legalEntity.name}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} loading={saving} disabled={!ledgerId}>
+            Assign
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Select
+          id="assign-ledger-select"
+          label="Ledger"
+          required
+          value={ledgerId}
+          onChange={(e) => setLedgerId(e.target.value)}
+        >
+          <option value="">Select a ledger</option>
+          {ledgers.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.code ?? '—'} — {ledgerDisplayName(l)} ({l.financeMode ?? '—'} · {ledgerCurrency(l)})
+            </option>
+          ))}
+        </Select>
+        <Select
+          id="assign-ledger-category"
+          label="Ledger Category"
+          required
+          value={ledgerCategory}
+          onChange={(e) => setLedgerCategory(e.target.value)}
+        >
+          {LEDGER_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </Select>
+      </div>
+    </Modal>
+  );
+}
+
 interface BusinessUnitForm {
   code: string;
   name: string;
@@ -446,6 +537,9 @@ export default function EnterpriseStructurePage() {
   const [expandedLEId, setExpandedLEId] = useState<string | null>(null);
   const [showAddLEModal, setShowAddLEModal] = useState(false);
   const [editingLE, setEditingLE] = useState<LegalEntity | null>(null);
+  const [leLedgerLinks, setLeLedgerLinks] = useState<Record<string, LegalEntityLedger[]>>({});
+  const [allLedgers, setAllLedgers] = useState<Ledger[]>([]);
+  const [assigningLedgerLE, setAssigningLedgerLE] = useState<LegalEntity | null>(null);
 
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
@@ -479,6 +573,11 @@ export default function EnterpriseStructurePage() {
         if (wanted && data.some((le) => le.id === wanted)) return wanted;
         return data[0]?.id ?? null;
       });
+
+      const linksNested = await Promise.all(
+        data.map((le) => listLegalEntityLedgers(le.id).catch(() => [])),
+      );
+      setLeLedgerLinks(Object.fromEntries(data.map((le, i) => [le.id, linksNested[i]])));
     } catch {
       setErrorLEs(true);
       showToast('Failed to load legal entities.', 'error');
@@ -540,6 +639,12 @@ export default function EnterpriseStructurePage() {
     loadLegalEntities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    listLedgers()
+      .then(setAllLedgers)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!selectedLEId) {
@@ -689,6 +794,7 @@ export default function EnterpriseStructurePage() {
                 {legalEntities.map((le) => {
                   const isExpanded = expandedLEId === le.id;
                   const isSelected = selectedLEId === le.id;
+                  const assignedLedger = leLedgerLinks[le.id]?.[0] ?? null;
                   return (
                     <Card
                       key={le.id}
@@ -707,6 +813,21 @@ export default function EnterpriseStructurePage() {
                       <p className="mt-1 text-lg font-bold text-navy">{le.name}</p>
                       <p className="mt-1 text-sm text-slate">Code: {le.code}</p>
                       <p className="mt-1 text-sm text-slate">Standard: {le.accountingStandard}</p>
+                      <div className="mt-1 text-sm">
+                        {assignedLedger ? (
+                          <p className="text-slate">
+                            Assigned Ledger:{' '}
+                            <span className="font-medium text-navy">
+                              {assignedLedger.ledgerCode} {assignedLedger.ledgerName}
+                            </span>
+                          </p>
+                        ) : (
+                          <p className="flex items-center gap-1.5 text-amber">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber" />
+                            Not assigned
+                          </p>
+                        )}
+                      </div>
 
                       {isExpanded && (
                         <div className="mt-3 border-t border-border pt-3 text-sm text-slate">
@@ -762,6 +883,18 @@ export default function EnterpriseStructurePage() {
                             Edit
                           </Button>
                         )}
+                        {canManage && (
+                          <Button
+                            variant="secondary"
+                            className="px-3 py-1.5 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssigningLedgerLE(le);
+                            }}
+                          >
+                            Assign Ledger
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   );
@@ -808,12 +941,11 @@ export default function EnterpriseStructurePage() {
                   <Card>
                     <p className="text-sm font-semibold text-navy">📒 No Ledger Assigned</p>
                     <p className="mt-2 text-sm text-slate">
-                      A ledger defines the accounting book for {selectedLE.name} — linking Chart
-                      of Accounts, currency, and finance mode.
+                      No Ledger assigned. Assign a Ledger from the Legal Entities tab.
                     </p>
                     {canManage && (
                       <Link to="/ledger-setup" className="mt-4 inline-block text-sm text-blue hover:underline">
-                        Set up a Ledger in Ledger Setup →
+                        Create a Ledger in Ledger Setup →
                       </Link>
                     )}
                   </Card>
@@ -1051,6 +1183,15 @@ export default function EnterpriseStructurePage() {
         <AddLegalEntityModal
           onClose={() => setShowAddLEModal(false)}
           onCreated={(created) => loadLegalEntities(created.id)}
+        />
+      )}
+
+      {assigningLedgerLE && (
+        <AssignLedgerModal
+          legalEntity={assigningLedgerLE}
+          ledgers={allLedgers}
+          onClose={() => setAssigningLedgerLE(null)}
+          onAssigned={() => loadLegalEntities()}
         />
       )}
 

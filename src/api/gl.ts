@@ -118,9 +118,9 @@ export async function lockPeriod(periodStatusId: string, actionBy: string) {
   return data.data;
 }
 
-export async function listLedgers(legalEntityId: string) {
+export async function listLedgers(legalEntityId?: string) {
   const { data } = await api.get<ApiResponse<Ledger[]>>('/api/v1/gl/ledgers', {
-    params: { legalEntityId },
+    params: legalEntityId ? { legalEntityId } : undefined,
   });
   return data.data;
 }
