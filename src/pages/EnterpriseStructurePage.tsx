@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -10,14 +11,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
   createBusinessUnit,
-  createCalendar,
-  createLedger,
   createLegalEntity,
-  generateInitialPeriods,
   generateNextYearPeriods,
   getAccountingCalendar,
   getPeriodStatus,
-  linkLegalEntityLedger,
   listAccountingPeriods,
   listBusinessUnits,
   listLedgers,
@@ -38,24 +35,6 @@ import { formatDate } from '../utils/format';
 const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
 
 const ACCOUNTING_STANDARDS = ['IND_AS', 'IGAAP', 'IFRS', 'US_GAAP'];
-const FINANCE_MODES = ['THICK', 'THIN', 'EVENT_ONLY'];
-const LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY', 'REPORTING', 'ENCUMBRANCE'];
-const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'SGD'];
-const PERIOD_TYPES = ['MONTHLY', 'QUARTERLY', 'FISCAL_4_4_5'];
-const MONTHS = [
-  { value: 1, label: 'January' },
-  { value: 2, label: 'February' },
-  { value: 3, label: 'March' },
-  { value: 4, label: 'April' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'June' },
-  { value: 7, label: 'July' },
-  { value: 8, label: 'August' },
-  { value: 9, label: 'September' },
-  { value: 10, label: 'October' },
-  { value: 11, label: 'November' },
-  { value: 12, label: 'December' },
-];
 
 const INDIAN_STATES = [
   { code: '01', name: 'Jammu & Kashmir' },
@@ -408,354 +387,6 @@ function AddLegalEntityModal({
   );
 }
 
-interface CreateLedgerForm {
-  code: string;
-  name: string;
-  description: string;
-  financeMode: string;
-  ledgerCategory: string;
-  functionalCurrency: string;
-  accountingStandard: string;
-}
-
-const EMPTY_LEDGER_FORM: CreateLedgerForm = {
-  code: '',
-  name: '',
-  description: '',
-  financeMode: 'THICK',
-  ledgerCategory: 'PRIMARY',
-  functionalCurrency: 'INR',
-  accountingStandard: 'IND_AS',
-};
-
-function CreateLedgerModal({
-  legalEntity,
-  onClose,
-  onCreated,
-}: {
-  legalEntity: LegalEntity;
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const { showToast } = useToast();
-  const [form, setForm] = useState<CreateLedgerForm>(EMPTY_LEDGER_FORM);
-  const [errors, setErrors] = useState<Partial<Record<keyof CreateLedgerForm, string>>>({});
-  const [saving, setSaving] = useState(false);
-
-  const validate = () => {
-    const next: typeof errors = {};
-    if (!form.code.trim()) next.code = 'Code is required';
-    else if (form.code.length > 30) next.code = 'Code must be 30 characters or fewer';
-    if (!form.name.trim()) next.name = 'Name is required';
-    else if (form.name.length > 255) next.name = 'Name must be 255 characters or fewer';
-    setErrors(next);
-    return Object.keys(next).length === 0;
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
-    setSaving(true);
-    try {
-      const newLedger = await createLedger({
-        code: form.code.trim().toUpperCase(),
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
-        financeMode: form.financeMode,
-        ledgerCategory: form.ledgerCategory,
-        functionalCurrency: form.functionalCurrency,
-        accountingStandard: form.accountingStandard,
-      });
-      try {
-        await linkLegalEntityLedger({
-          legalEntityId: legalEntity.id,
-          ledgerId: newLedger.id,
-          ledgerCategory: 'PRIMARY',
-        });
-        showToast(
-          `Ledger created and linked to ${legalEntity.name}. Next: Create Accounting Calendar.`,
-          'success',
-        );
-      } catch {
-        showToast(
-          'Ledger created, but linking it to the legal entity failed. Please retry the link from this screen.',
-          'error',
-        );
-      }
-      onCreated();
-      onClose();
-    } catch {
-      showToast('Failed to create ledger. Please try again.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      title="Create Ledger"
-      subtitle={legalEntity.name}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} loading={saving}>
-            Create Ledger
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <Input
-          id="ledger-code"
-          label="Code"
-          required
-          maxLength={30}
-          placeholder="PRIM-KA-01"
-          value={form.code}
-          onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-          error={errors.code}
-        />
-        <Input
-          id="ledger-name"
-          label="Name"
-          required
-          maxLength={255}
-          placeholder="Primary Ledger — Karnataka"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          error={errors.name}
-        />
-        <div>
-          <label htmlFor="ledger-description" className="mb-1 block text-sm font-medium text-navy">
-            Description
-          </label>
-          <textarea
-            id="ledger-description"
-            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-blue focus:outline-none"
-            rows={2}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </div>
-        <Select
-          id="ledger-finance-mode"
-          label="Finance Mode"
-          required
-          value={form.financeMode}
-          onChange={(e) => setForm({ ...form, financeMode: e.target.value })}
-        >
-          {FINANCE_MODES.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </Select>
-        <Select
-          id="ledger-category"
-          label="Ledger Category"
-          value={form.ledgerCategory}
-          onChange={(e) => setForm({ ...form, ledgerCategory: e.target.value })}
-        >
-          {LEDGER_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-        <Select
-          id="ledger-currency"
-          label="Functional Currency"
-          required
-          value={form.functionalCurrency}
-          onChange={(e) => setForm({ ...form, functionalCurrency: e.target.value })}
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-        <Select
-          id="ledger-standard"
-          label="Accounting Standard"
-          required
-          value={form.accountingStandard}
-          onChange={(e) => setForm({ ...form, accountingStandard: e.target.value })}
-        >
-          {ACCOUNTING_STANDARDS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </Select>
-      </div>
-    </Modal>
-  );
-}
-
-interface CreateCalendarForm {
-  name: string;
-  description: string;
-  fiscalYearStartMonth: number;
-  fiscalYearStartDay: number;
-  periodType: string;
-  initialFiscalYear: number;
-}
-
-function emptyCalendarForm(): CreateCalendarForm {
-  return {
-    name: '',
-    description: '',
-    fiscalYearStartMonth: 4,
-    fiscalYearStartDay: 1,
-    periodType: 'MONTHLY',
-    initialFiscalYear: new Date().getFullYear(),
-  };
-}
-
-function CreateCalendarModal({
-  ledger,
-  onClose,
-  onCreated,
-}: {
-  ledger: Ledger;
-  onClose: () => void;
-  onCreated: () => void;
-}) {
-  const { showToast } = useToast();
-  const [form, setForm] = useState<CreateCalendarForm>(emptyCalendarForm());
-  const [nameError, setNameError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      setNameError('Name is required');
-      return;
-    }
-    setNameError('');
-    setSaving(true);
-    try {
-      const cal = await createCalendar({
-        ledgerId: ledger.id,
-        name: form.name.trim(),
-        description: form.description.trim() || undefined,
-        fiscalYearStartMonth: form.fiscalYearStartMonth,
-        fiscalYearStartDay: form.fiscalYearStartDay,
-        periodType: form.periodType,
-        initialFiscalYear: form.initialFiscalYear,
-      });
-      try {
-        await generateInitialPeriods(cal.id);
-        showToast(
-          `Calendar created with 12 periods for FY ${form.initialFiscalYear}-${form.initialFiscalYear + 1}.`,
-          'success',
-        );
-      } catch {
-        showToast(
-          'Calendar created, but period generation failed. You can retry generating periods from this screen.',
-          'error',
-        );
-      }
-      onCreated();
-      onClose();
-    } catch {
-      showToast('Failed to create calendar. Please try again.', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      title="Create Accounting Calendar"
-      subtitle={ledger.ledgerName}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} loading={saving}>
-            Create Calendar
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <Input
-          id="cal-name"
-          label="Name"
-          required
-          placeholder="FY Calendar 2025-26"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          error={nameError}
-        />
-        <div>
-          <label htmlFor="cal-description" className="mb-1 block text-sm font-medium text-navy">
-            Description
-          </label>
-          <textarea
-            id="cal-description"
-            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-blue focus:outline-none"
-            rows={2}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </div>
-        <Select
-          id="cal-fy-month"
-          label="Fiscal Year Start Month"
-          required
-          value={form.fiscalYearStartMonth}
-          onChange={(e) => setForm({ ...form, fiscalYearStartMonth: Number(e.target.value) })}
-        >
-          {MONTHS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
-        </Select>
-        <Input
-          id="cal-fy-day"
-          label="Fiscal Year Start Day"
-          type="number"
-          min={1}
-          max={31}
-          value={form.fiscalYearStartDay}
-          onChange={(e) => setForm({ ...form, fiscalYearStartDay: Number(e.target.value) })}
-        />
-        <Select
-          id="cal-period-type"
-          label="Period Type"
-          required
-          value={form.periodType}
-          onChange={(e) => setForm({ ...form, periodType: e.target.value })}
-        >
-          {PERIOD_TYPES.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </Select>
-        <Input
-          id="cal-fy"
-          label="Initial Fiscal Year"
-          type="number"
-          required
-          value={form.initialFiscalYear}
-          onChange={(e) => setForm({ ...form, initialFiscalYear: Number(e.target.value) })}
-        />
-        <p className="text-xs text-slate">
-          Enter the year the first period starts. For Apr 2025 – Mar 2026, enter 2025.
-        </p>
-      </div>
-    </Modal>
-  );
-}
-
 interface BusinessUnitForm {
   code: string;
   name: string;
@@ -819,11 +450,9 @@ export default function EnterpriseStructurePage() {
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [loadingLedger, setLoadingLedger] = useState(false);
   const [errorLedger, setErrorLedger] = useState(false);
-  const [showCreateLedgerModal, setShowCreateLedgerModal] = useState(false);
 
   const [calendar, setCalendar] = useState<AccountingCalendar | null>(null);
   const [periodRows, setPeriodRows] = useState<PeriodRow[]>([]);
-  const [showCreateCalendarModal, setShowCreateCalendarModal] = useState(false);
   const [showGenerateNextConfirm, setShowGenerateNextConfirm] = useState(false);
   const [generatingNext, setGeneratingNext] = useState(false);
 
@@ -1061,7 +690,14 @@ export default function EnterpriseStructurePage() {
                   const isExpanded = expandedLEId === le.id;
                   const isSelected = selectedLEId === le.id;
                   return (
-                    <Card key={le.id} accent={isSelected} className="flex flex-col">
+                    <Card
+                      key={le.id}
+                      accent={isSelected}
+                      onClick={() => setSelectedLEId(le.id)}
+                      className={`flex cursor-pointer flex-col transition-colors ${
+                        isSelected ? 'ring-2 ring-blue' : 'hover:border-blue/40'
+                      }`}
+                    >
                       <div className="flex items-start justify-between">
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate">
                           🏢 Legal Entity
@@ -1081,14 +717,20 @@ export default function EnterpriseStructurePage() {
                             <button
                               type="button"
                               className="text-left text-blue hover:underline"
-                              onClick={() => goToTab('LEDGER', le.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goToTab('LEDGER', le.id);
+                              }}
                             >
                               View Ledger →
                             </button>
                             <button
                               type="button"
                               className="text-left text-blue hover:underline"
-                              onClick={() => goToTab('BU', le.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                goToTab('BU', le.id);
+                              }}
                             >
                               View Business Units →
                             </button>
@@ -1100,7 +742,8 @@ export default function EnterpriseStructurePage() {
                         <Button
                           variant="secondary"
                           className="px-3 py-1.5 text-xs"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setSelectedLEId(le.id);
                             setExpandedLEId(isExpanded ? null : le.id);
                           }}
@@ -1111,7 +754,10 @@ export default function EnterpriseStructurePage() {
                           <Button
                             variant="secondary"
                             className="px-3 py-1.5 text-xs"
-                            onClick={() => setEditingLE(le)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingLE(le);
+                            }}
                           >
                             Edit
                           </Button>
@@ -1147,6 +793,8 @@ export default function EnterpriseStructurePage() {
 
             {selectedLE && (
               <>
+                <h2 className="text-lg font-bold text-navy">Ledger & Calendar — {selectedLE.name}</h2>
+
                 {loadingLedger && <CardSkeleton count={1} />}
 
                 {!loadingLedger && errorLedger && (
@@ -1158,15 +806,15 @@ export default function EnterpriseStructurePage() {
 
                 {!loadingLedger && !errorLedger && !ledger && (
                   <Card>
-                    <p className="text-sm font-semibold text-navy">📒 No Ledger Configured</p>
+                    <p className="text-sm font-semibold text-navy">📒 No Ledger Assigned</p>
                     <p className="mt-2 text-sm text-slate">
                       A ledger defines the accounting book for {selectedLE.name} — linking Chart
                       of Accounts, currency, and finance mode.
                     </p>
                     {canManage && (
-                      <Button className="mt-4" onClick={() => setShowCreateLedgerModal(true)}>
-                        + Create Ledger
-                      </Button>
+                      <Link to="/ledger-setup" className="mt-4 inline-block text-sm text-blue hover:underline">
+                        Set up a Ledger in Ledger Setup →
+                      </Link>
                     )}
                   </Card>
                 )}
@@ -1207,9 +855,9 @@ export default function EnterpriseStructurePage() {
                           for this ledger.
                         </p>
                         {canManage && (
-                          <Button className="mt-4" onClick={() => setShowCreateCalendarModal(true)}>
-                            + Create Calendar
-                          </Button>
+                          <Link to="/ledger-setup" className="mt-4 inline-block text-sm text-blue hover:underline">
+                            Set up a Calendar in Ledger Setup →
+                          </Link>
                         )}
                       </Card>
                     )}
@@ -1403,22 +1051,6 @@ export default function EnterpriseStructurePage() {
         <AddLegalEntityModal
           onClose={() => setShowAddLEModal(false)}
           onCreated={(created) => loadLegalEntities(created.id)}
-        />
-      )}
-
-      {showCreateLedgerModal && selectedLE && (
-        <CreateLedgerModal
-          legalEntity={selectedLE}
-          onClose={() => setShowCreateLedgerModal(false)}
-          onCreated={() => loadLedgerAndCalendar(selectedLE.id)}
-        />
-      )}
-
-      {showCreateCalendarModal && ledger && (
-        <CreateCalendarModal
-          ledger={ledger}
-          onClose={() => setShowCreateCalendarModal(false)}
-          onCreated={() => selectedLEId && loadLedgerAndCalendar(selectedLEId)}
         />
       )}
 

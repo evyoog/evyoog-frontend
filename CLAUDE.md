@@ -440,3 +440,35 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   returned no response), so the live wizard/assign/toggle/calendar flows
   against real API data were not exercised — same limitation as the
   Enterprise Structure and COA Structure builds above.
+
+## Enterprise Structure — Selected LE context fix (August 2026)
+- EnterpriseStructurePage.tsx already had a `selectedLEId` state (default
+  `user?.legalEntityId`) driving Tab 2/3 loads — the actual bug was that
+  only the small "View Details" button set it, not the LE card itself, so
+  clicking a card without pressing that button left Tab 2 showing stale
+  data. Fixed by adding `onClick={() => setSelectedLEId(le.id)}` to the
+  whole Card, with `e.stopPropagation()` on the card's inner
+  buttons/links (View Details, Edit, View Ledger →, View Business Units →)
+  so they keep their own behavior without double-triggering.
+- Selected-card highlight is `ring-2 ring-blue` (in addition to the
+  existing `accent` left-border) since the left-border accent alone read
+  as too subtle for a "this is the active context" indicator across a
+  grid of cards.
+- Tab 2 gained an explicit `Ledger & Calendar — {selectedLE.name}` header
+  (Tab 3's `Business Units — {selectedLE.name}` header already existed).
+- Ledger/Calendar creation now lives only in Ledger Setup
+  ([[Ledger Setup Screen]] section above) — `CreateLedgerModal` and
+  `CreateCalendarModal` (plus their now-unused form state/constants:
+  `showCreateLedgerModal`, `showCreateCalendarModal`, `FINANCE_MODES`,
+  `LEDGER_CATEGORIES`, `CURRENCIES`, `PERIOD_TYPES`, `MONTHS`, and the
+  `createLedger`/`linkLegalEntityLedger`/`createCalendar`/
+  `generateInitialPeriods` imports) were deleted from this page entirely.
+  The "No Ledger Assigned" / "No Calendar Configured" empty states now
+  render a `<Link to="/ledger-setup">` guidance link instead of an
+  in-page create button. "Generate Next FY" was left in place (it extends
+  an *existing* calendar rather than creating one, and wasn't part of the
+  removal ask).
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no
+  warnings), and a dev-server boot check (`GET /enterprise` → 200). No
+  backend was running, so the live card-click → Tab 2 refresh flow was
+  not exercised end-to-end against real data.
