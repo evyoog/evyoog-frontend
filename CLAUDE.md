@@ -585,3 +585,13 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   against real API data were not exercised — same limitation noted on
   every other screen built this way (see Enterprise Structure, COA
   Structure, Ledger Setup sections above).
+
+## Dimension Values Screen (August 2026)
+- Route: /dimension-values
+- Loads dimensions from getCoaStructureByLedger() — tab per segment
+- All dimension values eager-loaded in parallel (not lazy) for summary cards
+- Tree View groups NATURAL_ACCOUNT by accountQualifier
+- Set/Clear Default only shown for optional dimensions (isRequired=false)
+- DimensionValuesPanel.tsx deleted — logic moved to DimensionValuesPage.tsx
+- Chart of Accounts removed from sidebar (route kept in App.tsx)
+- Finance Dimensions — Manage Values panel removed, link to /dimension-values added
