@@ -17,6 +17,7 @@ import FinanceDimensionsPage from './pages/FinanceDimensionsPage';
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage';
 import AccountCombinationsPage from './pages/AccountCombinationsPage';
 import CoaStructurePage from './pages/CoaStructurePage';
+import DimensionValuesPage from './pages/DimensionValuesPage';
 import LedgerSetupPage from './pages/LedgerSetupPage';
 import UserManagementPage from './pages/UserManagementPage';
 import RoleManagementPage from './pages/RoleManagementPage';
@@ -147,6 +148,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <CoaStructurePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dimension-values"
+              element={
+                <ProtectedRoute>
+                  <DimensionValuesPage />
                 </ProtectedRoute>
               }
             />

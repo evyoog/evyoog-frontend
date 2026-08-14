@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -6,7 +7,6 @@ import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Modal from '../components/ui/Modal';
 import { CardSkeleton, TableSkeleton, ErrorState, EmptyState } from '../components/ui';
-import DimensionValuesPanel from '../components/DimensionValuesPanel';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
@@ -104,8 +104,6 @@ export default function FinanceDimensionsPage() {
   const [form, setForm] = useState<DimensionFormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof DimensionFormState, string>>>({});
   const [saving, setSaving] = useState(false);
-
-  const [valuesDimension, setValuesDimension] = useState<FinanceDimension | null>(null);
 
   async function load(lid: string) {
     setLoading(true);
@@ -210,6 +208,11 @@ export default function FinanceDimensionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-navy">Finance Dimensions</h1>
           <p className="mt-1 text-sm text-slate">Dimensions defined for Primary Ledger</p>
+          {canViewValues && (
+            <Link to="/dimension-values" className="mt-1 inline-block text-sm text-blue hover:underline">
+              Manage dimension values in the Dimension Values screen →
+            </Link>
+          )}
         </div>
         {canManage && (
           <Button onClick={openAdd} aria-label="Add new dimension">
@@ -275,7 +278,7 @@ export default function FinanceDimensionsPage() {
                 <th className="py-2 pr-2 font-medium">Required</th>
                 <th className="py-2 pr-2 font-medium">Values</th>
                 <th className="py-2 pr-2 font-medium">Status</th>
-                {(canManage || canViewValues) && <th className="py-2 pr-2 font-medium">Actions</th>}
+                {canManage && <th className="py-2 pr-2 font-medium">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -296,30 +299,16 @@ export default function FinanceDimensionsPage() {
                     <td className="py-2 pr-2">
                       <StatusBadge isActive={d.isActive} />
                     </td>
-                    {(canManage || canViewValues) && (
+                    {canManage && (
                       <td className="py-2 pr-2">
-                        <div className="flex items-center gap-2">
-                          {canViewValues && (
-                            <Button
-                              variant="secondary"
-                              className="px-2 py-1 text-xs"
-                              onClick={() => setValuesDimension(d)}
-                              aria-label={`Manage values for ${d.name}`}
-                            >
-                              Manage Values
-                            </Button>
-                          )}
-                          {canManage && (
-                            <Button
-                              variant="secondary"
-                              className="px-2 py-1 text-xs"
-                              onClick={() => openEdit(d)}
-                              aria-label={`Edit ${d.name}`}
-                            >
-                              Edit
-                            </Button>
-                          )}
-                        </div>
+                        <Button
+                          variant="secondary"
+                          className="px-2 py-1 text-xs"
+                          onClick={() => openEdit(d)}
+                          aria-label={`Edit ${d.name}`}
+                        >
+                          Edit
+                        </Button>
                       </td>
                     )}
                   </tr>
@@ -388,15 +377,6 @@ export default function FinanceDimensionsPage() {
             />
           </div>
         </Modal>
-      )}
-
-      {valuesDimension && (
-        <DimensionValuesPanel
-          dimension={valuesDimension}
-          canManage={canManage}
-          onClose={() => setValuesDimension(null)}
-          onValuesChanged={() => ledgerId && load(ledgerId)}
-        />
       )}
     </AppLayout>
   );

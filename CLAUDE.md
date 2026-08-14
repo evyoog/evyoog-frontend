@@ -524,3 +524,64 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   warnings), and a dev-server boot check (`GET /enterprise` → 200). No
   backend was running, so the live card-click → Tab 2 refresh flow was
   not exercised end-to-end against real data.
+
+## Dimension Values Screen (August 2026)
+- DimensionValuesPage.tsx (/dimension-values) — tab-per-dimension screen
+  driven by `getCoaStructureByLedger(ledgerId)` (ledger resolved from
+  `listLedgers(user.legalEntityId)[0]`), with segments sorted by
+  `segmentNumber` as the tab order. `CoaSegmentSummary.id` is used directly
+  as `financeDimensionId` for `listDimensionValues`, per the confirmed API
+  shape.
+- Deviated from the build spec's literal "lazy load only the active tab"
+  instruction: on initial load, values for **all** dimensions are fetched
+  in parallel (`Promise.all`) rather than one at a time on tab click. This
+  was necessary because the spec's own summary cards (Total Values /
+  Postable Values / Summary Values) require a sum **across all
+  dimensions**, and `CoaSegmentSummary` has no isSummary/isPostable
+  breakdown — only a per-dimension `valueCount`. With a small, fixed
+  dimension count (Natural Account/Cost Centre/Product today), eager
+  parallel loading keeps the summary cards accurate and makes tab
+  switching instant (no per-tab skeleton), traded off against the spec's
+  literal lazy-load-on-click UX. TableSkeleton still covers the single
+  initial page load.
+- Tab labels use `dimensionTypeLabel()` from `src/utils/coaStructure.ts`
+  (already shared with CoaStructurePage) rather than a new helper.
+- Add/Edit Value modal exposes **Parent Value** for every dimension type
+  (not just Natural Account, unlike the old FinanceDimensionsPage panel)
+  per this spec's explicit "ALL types" field list. `validFrom`/`validTo`/
+  `budgetControlled` from the old panel were dropped — not in this spec's
+  field list, so not carried over (avoids scope creep beyond the ask).
+- Tree View: NATURAL_ACCOUNT groups by `accountQualifier` in a fixed
+  ASSET→LIABILITY→EQUITY→REVENUE→EXPENSE order, each group header
+  literally labelled "{QUALIFIER} (Summary)" per the spec's mockup (this
+  is a synthetic grouping label, not a real DimensionValue row). For
+  other dimension types, groups by `parentValueId`/`parentValueCode` if
+  any value has a parent set; since seed data has no hierarchy yet
+  (`parentValueId=null` for all), Tree View falls back to the same flat
+  table render with a "No hierarchy defined yet" note, exactly as the
+  spec anticipates.
+- "Set/Clear Default" and the Default column are gated on
+  `!activeDimension.isRequired` (data-driven), not hardcoded to
+  "Cost Centre/Product" as the spec's parenthetical example suggested —
+  matches the existing convention from the old DimensionValuesPanel.
+- **DimensionValuesPanel.tsx deleted** (was only ever used from
+  FinanceDimensionsPage.tsx's now-removed "Manage Values" button/slide-
+  over) — its field logic was carried into DimensionValuesPage.tsx's
+  modal instead of being kept as dead code.
+- FinanceDimensionsPage.tsx: "Manage Values" button + slide-over replaced
+  with a "Manage dimension values in the Dimension Values screen →" link
+  to `/dimension-values` (shown when `gl:dimension:view` is granted); its
+  Actions column is now Edit-only (`canManage`), since value management
+  moved off this page entirely.
+- Sidebar.tsx: "Dimension Values" added under Accounting Configuration
+  (right after COA Structure); "Chart of Accounts" removed from the
+  sidebar per the build spec, but the route/page were intentionally left
+  in App.tsx (not deleted) since COA Structure + Dimension Values now
+  supersede it in the nav only, not in code.
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no new
+  warnings), and dev-server boot checks (`/dimension-values` and
+  `/finance-dimensions` both → 200). No backend was running in this
+  environment, so the live tab/add/edit/tree-view/set-default flows
+  against real API data were not exercised — same limitation noted on
+  every other screen built this way (see Enterprise Structure, COA
+  Structure, Ledger Setup sections above).
