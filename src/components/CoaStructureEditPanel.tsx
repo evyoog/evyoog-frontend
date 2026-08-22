@@ -7,6 +7,7 @@ import {
   addCoaSegment,
   getCoaCombinationFormat,
   getCoaStructure,
+  listJournals,
   removeCoaSegment,
   updateCoaStructure,
   updateFinanceDimension,
@@ -46,9 +47,12 @@ function DimensionTypeBadge({ type }: { type: string }) {
   );
 }
 
+const BALANCING_LOCKED_MESSAGE = 'Balancing configuration is locked after journals are posted.';
+
 interface CoaStructureEditPanelProps {
   structure: CoaStructure;
   canManage: boolean;
+  legalEntityId?: string;
   onClose: () => void;
   onChanged?: () => void;
 }
@@ -56,6 +60,7 @@ interface CoaStructureEditPanelProps {
 export default function CoaStructureEditPanel({
   structure,
   canManage,
+  legalEntityId,
   onClose,
   onChanged,
 }: CoaStructureEditPanelProps) {
@@ -82,6 +87,7 @@ export default function CoaStructureEditPanel({
 
   const [confirmBalancing, setConfirmBalancing] = useState<{ id: string; sequence: 2 | 3 } | null>(null);
   const [balancingActingId, setBalancingActingId] = useState<string | null>(null);
+  const [balancingLocked, setBalancingLocked] = useState(false);
 
   useEffect(() => {
     setVisible(true);
@@ -99,6 +105,13 @@ export default function CoaStructureEditPanel({
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structure.id]);
+
+  useEffect(() => {
+    if (!legalEntityId) return;
+    listJournals({ legalEntityId, status: 'POSTED', size: 1 })
+      .then((page) => setBalancingLocked(page.content.length > 0))
+      .catch(() => setBalancingLocked(false));
+  }, [legalEntityId]);
 
   const handleClose = () => {
     setVisible(false);
@@ -347,7 +360,8 @@ export default function CoaStructureEditPanel({
                           <Button
                             variant="secondary"
                             className="px-2 py-1 text-xs"
-                            disabled={balancingActingId === seg.id}
+                            disabled={balancingActingId === seg.id || balancingLocked}
+                            title={balancingLocked ? BALANCING_LOCKED_MESSAGE : undefined}
                             onClick={() => handleClearBalancing(seg)}
                           >
                             Clear Balancing
@@ -379,7 +393,8 @@ export default function CoaStructureEditPanel({
                               key={seq}
                               variant="secondary"
                               className="px-2 py-1 text-xs"
-                              disabled={balancingActingId === seg.id}
+                              disabled={balancingActingId === seg.id || balancingLocked}
+                              title={balancingLocked ? BALANCING_LOCKED_MESSAGE : undefined}
                               onClick={() => setConfirmBalancing({ id: seg.id, sequence: seq })}
                             >
                               Set as {seq === 2 ? '2nd' : '3rd'} Balancing

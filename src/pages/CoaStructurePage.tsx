@@ -194,7 +194,7 @@ const EMPTY_ADD_FORM: AddFormState = {
 };
 
 export default function CoaStructurePage() {
-  const { hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
   const canManage = hasPermission('gl:ledger:manage');
 
@@ -572,6 +572,7 @@ export default function CoaStructurePage() {
         <CoaStructureEditPanel
           structure={editingStructure}
           canManage={canManage}
+          legalEntityId={user?.legalEntityId}
           onClose={() => setEditingStructure(null)}
           onChanged={loadStructures}
         />
