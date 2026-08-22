@@ -646,3 +646,12 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   fails soft — an error leaves `isLocked=false` (buttons enabled),
   matching this codebase's other fail-soft lookups (GST card, KPI
   trial-balance) rather than blocking the panel.
+
+## V30a Balancing Segment UI (August 2026)
+- COA Structure: balancing badges (purple=2nd, indigo=3rd) per segment
+- Edit Panel: Set/Clear Balancing locked when ledger has posted journals
+- Lock check: listJournals POSTED size=1 → content.length > 0 = locked
+- Amber warning banner when locked, disabled buttons with tooltip
+- DimensionValuesPage: ⚖ icon on tab + purple banner when isBalancing=true
+- Legal Entity always shown as implicit primary (not a finance_dimension row)
+- NATURAL_ACCOUNT excluded from balancing toggle (account type, not balancing)
