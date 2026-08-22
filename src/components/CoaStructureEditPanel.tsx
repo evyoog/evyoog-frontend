@@ -9,12 +9,14 @@ import {
   getCoaStructure,
   removeCoaSegment,
   updateCoaStructure,
+  updateFinanceDimension,
 } from '../api/gl';
 import type { CoaSegmentSummary, CoaStructure } from '../types';
 import { formatDate } from '../utils/format';
 import {
   OPTIONAL_DIMENSION_TYPES,
   autoSegmentCode,
+  balancingBadge,
   buildCombinationPreview,
   dimensionTypeBadgeClass,
   dimensionTypeLabel,
@@ -77,6 +79,9 @@ export default function CoaStructureEditPanel({
 
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const [confirmBalancing, setConfirmBalancing] = useState<{ id: string; sequence: 2 | 3 } | null>(null);
+  const [balancingActingId, setBalancingActingId] = useState<string | null>(null);
 
   useEffect(() => {
     setVisible(true);
@@ -175,7 +180,37 @@ export default function CoaStructureEditPanel({
     }
   };
 
+  const handleSetBalancing = async (segment: CoaSegmentSummary, sequence: 2 | 3) => {
+    setBalancingActingId(segment.id);
+    setConfirmBalancing(null);
+    try {
+      await updateFinanceDimension(segment.id, { isBalancing: true, balancingSequence: sequence });
+      showToast(`${segment.name} set as the ${sequence === 2 ? '2nd' : '3rd'} balancing segment.`, 'success');
+      await reload();
+    } catch {
+      showToast('Failed to set balancing segment. Please try again.', 'error');
+    } finally {
+      setBalancingActingId(null);
+    }
+  };
+
+  const handleClearBalancing = async (segment: CoaSegmentSummary) => {
+    setBalancingActingId(segment.id);
+    try {
+      await updateFinanceDimension(segment.id, { isBalancing: false, balancingSequence: null });
+      showToast(`Cleared balancing status for ${segment.name}.`, 'success');
+      await reload();
+    } catch {
+      showToast('Failed to clear balancing segment. Please try again.', 'error');
+    } finally {
+      setBalancingActingId(null);
+    }
+  };
+
   const sortedSegments = [...current.segments].sort((a, b) => a.segmentNumber - b.segmentNumber);
+  const takenBalancingSequences = new Set(
+    current.segments.filter((s) => s.isBalancing).map((s) => s.balancingSequence),
+  );
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -285,7 +320,12 @@ export default function CoaStructureEditPanel({
               </p>
 
               <div className="mt-2 flex flex-col divide-y divide-border">
-                {sortedSegments.map((seg) => (
+                {sortedSegments.map((seg) => {
+                  const badge = balancingBadge(seg.balancingSequence);
+                  const availableSequences: (2 | 3)[] = [2, 3].filter(
+                    (s) => !takenBalancingSequences.has(s),
+                  ) as (2 | 3)[];
+                  return (
                   <div key={seg.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
                       {seg.segmentNumber}
@@ -294,6 +334,60 @@ export default function CoaStructureEditPanel({
                     <span className="flex-1 text-slate">{seg.name}</span>
                     <RequiredBadge isRequired={seg.isRequired} />
                     <DimensionTypeBadge type={seg.dimensionType} />
+                    {badge && (
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    )}
+                    {canManage && seg.dimensionType !== 'NATURAL_ACCOUNT' && (
+                      <>
+                        {seg.isBalancing ? (
+                          <Button
+                            variant="secondary"
+                            className="px-2 py-1 text-xs"
+                            disabled={balancingActingId === seg.id}
+                            onClick={() => handleClearBalancing(seg)}
+                          >
+                            Clear Balancing
+                          </Button>
+                        ) : confirmBalancing?.id === seg.id ? (
+                          <span className="flex items-center gap-1 text-xs">
+                            Set {seg.name} as the {confirmBalancing.sequence === 2 ? '2nd' : '3rd'} balancing
+                            segment? Journals will need to balance within each {seg.name} value.
+                            <Button
+                              variant="danger"
+                              className="px-2 py-1 text-xs"
+                              disabled={balancingActingId === seg.id}
+                              onClick={() => handleSetBalancing(seg, confirmBalancing.sequence)}
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="px-2 py-1 text-xs"
+                              disabled={balancingActingId === seg.id}
+                              onClick={() => setConfirmBalancing(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </span>
+                        ) : (
+                          availableSequences.map((seq) => (
+                            <Button
+                              key={seq}
+                              variant="secondary"
+                              className="px-2 py-1 text-xs"
+                              disabled={balancingActingId === seg.id}
+                              onClick={() => setConfirmBalancing({ id: seg.id, sequence: seq })}
+                            >
+                              Set as {seq === 2 ? '2nd' : '3rd'} Balancing
+                            </Button>
+                          ))
+                        )}
+                      </>
+                    )}
                     {canManage &&
                       seg.dimensionType !== 'NATURAL_ACCOUNT' &&
                       (confirmRemoveId === seg.id ? (
@@ -328,7 +422,8 @@ export default function CoaStructureEditPanel({
                         </Button>
                       ))}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {showAddSegment && (

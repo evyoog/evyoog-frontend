@@ -60,3 +60,13 @@ export function dimensionTypeBadgeClass(type: string): string {
 export function buildCombinationPreview(codes: string[], separator = '.'): string {
   return codes.map((c) => `[${c || '—'}]`).join(separator);
 }
+
+export function balancingBadge(sequence: number | null | undefined): { label: string; className: string } | null {
+  if (sequence === 2) {
+    return { label: '2nd Balancing', className: 'bg-purple-100 text-purple-700 border border-purple-200' };
+  }
+  if (sequence === 3) {
+    return { label: '3rd Balancing', className: 'bg-indigo-100 text-indigo-700 border border-indigo-200' };
+  }
+  return null;
+}

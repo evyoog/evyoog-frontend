@@ -595,3 +595,38 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - DimensionValuesPanel.tsx deleted — logic moved to DimensionValuesPage.tsx
 - Chart of Accounts removed from sidebar (route kept in App.tsx)
 - Finance Dimensions — Manage Values panel removed, link to /dimension-values added
+
+## V30a Balancing Segment UI (August 2026)
+- Config-only (display + set/clear flags). No PostingEngine enforcement —
+  that's V30b. Backend confirmed CoaSegmentSummary now returns isBalancing
+  (boolean) + balancingSequence (2 | 3 | null) per segment.
+- CoaSegmentSummary and FinanceDimension types both extended with these
+  fields (FinanceDimension's are optional since not every caller of
+  listFinanceDimensions cares about balancing).
+- updateFinanceDimension's body type extended with isBalancing/
+  balancingSequence — used by CoaStructureEditPanel's new Set/Clear
+  Balancing controls in the Segment Manager (max 2 secondary balancing
+  segments per structure: sequence 2 + 3; "Set as Balancing" only offers
+  sequences not already taken elsewhere on the structure; NATURAL_ACCOUNT
+  never gets the toggle — it's the account-type segment, not balancing).
+- balancingBadge() (2nd Balancing/purple, 3rd Balancing/indigo) added to
+  src/utils/coaStructure.ts, shared by CoaStructurePage, the edit panel's
+  Segment Manager, and DimensionValuesPage's tab-content header.
+- getBalancingDimensions() added to gl.ts per the build spec's required
+  API list but has no UI call site (same "added for parity, not wired to
+  a screen" pattern as getLedger — see Ledger Setup section above).
+- CoaStructurePage card: static "Legal Entity is always the primary
+  balancing segment (implicit)" line + a derived "Balancing Segments:
+  Legal Entity (primary) + X (secondary)" summary line (Legal Entity
+  itself is never a finance_dimension row, so this is not sourced from
+  segments — only the "+ X" part is).
+- DimensionValuesPage: ⚖ appended to a tab label when that dimension's
+  isBalancing=true; purple/indigo info banner shown above the table/tree
+  only on the active tab when it's balancing, explicitly noting
+  "PostingEngine enforcement: coming in V30b".
+- Verified via `tsc -b` (clean), `vite build` (clean), `oxlint` (no new
+  warnings), and dev-server boot checks on `/coa-structure` and
+  `/dimension-values` (both → 200). No backend was running in this
+  environment, so the live Set/Clear Balancing round trip against real
+  API data was not exercised — same limitation as prior COA/Enterprise
+  Structure builds.

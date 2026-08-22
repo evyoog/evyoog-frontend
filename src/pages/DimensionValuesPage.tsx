@@ -20,7 +20,7 @@ import {
 } from '../api/gl';
 import type { CoaSegmentSummary, CoaStructure, DimensionValue } from '../types';
 import { formatDate } from '../utils/format';
-import { dimensionTypeLabel } from '../utils/coaStructure';
+import { balancingBadge, dimensionTypeLabel } from '../utils/coaStructure';
 
 const QUALIFIERS = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
 const NORMAL_BALANCES = ['DR', 'CR'];
@@ -638,11 +638,44 @@ export default function DimensionValuesPage() {
                 }`}
               >
                 {dimensionTypeLabel(seg.dimensionType)} ({(valuesByDimension[seg.id] ?? []).length})
+                {seg.isBalancing && <span aria-label="Balancing segment"> ⚖</span>}
               </button>
             ))}
           </div>
 
           <Card className="mt-6">
+            {activeDimension && (
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-navy">
+                  {activeDimension.name} Values
+                  {(() => {
+                    const badge = balancingBadge(activeDimension.balancingSequence);
+                    return (
+                      badge && (
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+                        >
+                          {badge.label} Segment ⚖
+                        </span>
+                      )
+                    );
+                  })()}
+                </h2>
+              </div>
+            )}
+
+            {activeDimension?.isBalancing && (
+              <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-800">
+                <p className="font-semibold">
+                  ⚖ {activeDimension.balancingSequence === 2 ? 'Secondary' : 'Tertiary'} Balancing Segment
+                </p>
+                <p className="mt-1">
+                  Journals must balance within each {activeDimension.name} value.
+                </p>
+                <p className="mt-1 text-xs text-purple-700">PostingEngine enforcement: coming in V30b</p>
+              </div>
+            )}
+
             {activeDimension && (
               <div className="mb-4 flex items-center justify-between">
                 <p className="text-sm text-slate">{activeValues.length} values</p>

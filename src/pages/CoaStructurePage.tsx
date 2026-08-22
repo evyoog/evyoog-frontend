@@ -16,6 +16,7 @@ import { formatDate } from '../utils/format';
 import {
   OPTIONAL_DIMENSION_TYPES,
   autoSegmentCode,
+  balancingBadge,
   buildCombinationPreview,
   dimensionTypeBadgeClass,
   dimensionTypeLabel,
@@ -60,6 +61,7 @@ function DimensionTypeBadge({ type }: { type: string }) {
 }
 
 function SegmentRow({ segment }: { segment: CoaSegmentSummary }) {
+  const badge = balancingBadge(segment.balancingSequence);
   return (
     <div className="flex flex-wrap items-center gap-2 py-1.5 text-sm">
       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
@@ -69,6 +71,13 @@ function SegmentRow({ segment }: { segment: CoaSegmentSummary }) {
       <span className="text-slate">{segment.name}</span>
       <RequiredBadge isRequired={segment.isRequired} />
       <DimensionTypeBadge type={segment.dimensionType} />
+      {badge && (
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
+        >
+          {badge.label}
+        </span>
+      )}
       <span className="text-xs text-slate">
         {segment.valueCount} value{segment.valueCount === 1 ? '' : 's'}
       </span>
@@ -88,6 +97,13 @@ function CoaStructureCard({
   onEdit: (s: CoaStructure) => void;
 }) {
   const sortedSegments = [...structure.segments].sort((a, b) => a.segmentNumber - b.segmentNumber);
+  const secondaryBalancing = sortedSegments
+    .filter((s) => s.isBalancing)
+    .sort((a, b) => (a.balancingSequence ?? 0) - (b.balancingSequence ?? 0));
+  const balancingSummary =
+    secondaryBalancing.length > 0
+      ? `Legal Entity (primary) + ${secondaryBalancing.map((s) => s.name).join(' + ')} (secondary)`
+      : 'Legal Entity (primary) only';
   return (
     <Card>
       <div className="flex items-start justify-between gap-3">
@@ -110,6 +126,10 @@ function CoaStructureCard({
         </div>
       </div>
 
+      <p className="mt-2 text-xs text-slate">
+        Legal Entity is always the primary balancing segment (implicit)
+      </p>
+
       {structure.description && <p className="mt-2 text-sm text-slate">{structure.description}</p>}
 
       <div className="mt-4">
@@ -130,7 +150,9 @@ function CoaStructureCard({
         </code>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-slate">
+      <p className="mt-4 text-xs text-slate">Balancing Segments: {balancingSummary}</p>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-xs text-slate">
         <span>
           Assigned to: {structure.assignedLedgerCount} Ledger
           {structure.assignedLedgerCount === 1 ? '' : 's'}

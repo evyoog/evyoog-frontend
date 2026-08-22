@@ -231,11 +231,21 @@ export async function updateFinanceDimension(
     description: string | null;
     dimensionType: string;
     displayOrder: number;
+    isBalancing: boolean;
+    balancingSequence: number | null;
   }>,
 ) {
   const { data } = await api.put<ApiResponse<FinanceDimension>>(
     `/api/v1/gl/finance-dimensions/${id}`,
     body,
+  );
+  return data.data;
+}
+
+export async function getBalancingDimensions(coaStructureId: string) {
+  const { data } = await api.get<ApiResponse<FinanceDimension[]>>(
+    '/api/v1/gl/finance-dimensions/balancing',
+    { params: { coaStructureId } },
   );
   return data.data;
 }

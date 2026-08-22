@@ -159,6 +159,8 @@ export interface FinanceDimension {
   displayOrder: number;
   isActive: boolean;
   valueCount: number;
+  isBalancing?: boolean;
+  balancingSequence?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -338,6 +340,8 @@ export interface CoaSegmentSummary {
   segmentNumber: number;
   isRequired: boolean;
   valueCount: number;
+  isBalancing: boolean;
+  balancingSequence: number | null;
 }
 
 export interface CoaStructure {
