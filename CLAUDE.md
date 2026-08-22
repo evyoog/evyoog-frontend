@@ -631,13 +631,18 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   API data was not exercised — same limitation as prior COA/Enterprise
   Structure builds.
 - Follow-up: Set/Clear Balancing buttons in CoaStructureEditPanel.tsx are
-  disabled (with a native `title` tooltip: "Balancing configuration is
-  locked after journals are posted.") once the ledger's legal entity has
-  any POSTED journal — checked via `listJournals({ legalEntityId,
+  disabled (native `title` tooltip: "Cannot change balancing configuration
+  after journals are posted.") once the ledger's legal entity has any
+  POSTED journal — checked via `listJournals({ legalEntityId,
   status: 'POSTED', size: 1 })` on panel mount, using the existing
-  `listJournals`/`Page<T>` from gl.ts (no new API function needed).
-  `legalEntityId` is now a prop on `CoaStructureEditPanel`, passed from
-  CoaStructurePage.tsx as `user?.legalEntityId` (same source used by
-  DimensionValuesPage). The check fails soft — an error leaves the
-  buttons enabled (unlocked), matching this codebase's other fail-soft
-  lookups (GST card, KPI trial-balance) rather than blocking the panel.
+  `listJournals`/`Page<T>` from gl.ts (no new API function added/
+  redeclared). An amber warning banner ("⚠️ Balancing configuration is
+  locked — journals have been posted to this ledger. This setting cannot
+  be changed after posting.") renders at the top of the Segment Manager
+  section whenever `isLocked` is true. `legalEntityId` is a required prop
+  on `CoaStructureEditPanel`; CoaStructurePage.tsx only renders the panel
+  when both `editingStructure` and `user` are present (`user &&`), so it
+  can pass `user.legalEntityId` without a non-null assertion. The check
+  fails soft — an error leaves `isLocked=false` (buttons enabled),
+  matching this codebase's other fail-soft lookups (GST card, KPI
+  trial-balance) rather than blocking the panel.

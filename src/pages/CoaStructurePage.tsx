@@ -568,11 +568,11 @@ export default function CoaStructurePage() {
         </Modal>
       )}
 
-      {editingStructure && (
+      {editingStructure && user && (
         <CoaStructureEditPanel
           structure={editingStructure}
           canManage={canManage}
-          legalEntityId={user?.legalEntityId}
+          legalEntityId={user.legalEntityId}
           onClose={() => setEditingStructure(null)}
           onChanged={loadStructures}
         />

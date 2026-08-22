@@ -47,12 +47,12 @@ function DimensionTypeBadge({ type }: { type: string }) {
   );
 }
 
-const BALANCING_LOCKED_MESSAGE = 'Balancing configuration is locked after journals are posted.';
+const BALANCING_LOCKED_TOOLTIP = 'Cannot change balancing configuration after journals are posted.';
 
 interface CoaStructureEditPanelProps {
   structure: CoaStructure;
   canManage: boolean;
-  legalEntityId?: string;
+  legalEntityId: string;
   onClose: () => void;
   onChanged?: () => void;
 }
@@ -87,7 +87,7 @@ export default function CoaStructureEditPanel({
 
   const [confirmBalancing, setConfirmBalancing] = useState<{ id: string; sequence: 2 | 3 } | null>(null);
   const [balancingActingId, setBalancingActingId] = useState<string | null>(null);
-  const [balancingLocked, setBalancingLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     setVisible(true);
@@ -107,10 +107,9 @@ export default function CoaStructureEditPanel({
   }, [structure.id]);
 
   useEffect(() => {
-    if (!legalEntityId) return;
     listJournals({ legalEntityId, status: 'POSTED', size: 1 })
-      .then((page) => setBalancingLocked(page.content.length > 0))
-      .catch(() => setBalancingLocked(false));
+      .then((journals) => setIsLocked((journals?.content?.length ?? 0) > 0))
+      .catch(() => setIsLocked(false));
   }, [legalEntityId]);
 
   const handleClose = () => {
@@ -332,6 +331,13 @@ export default function CoaStructureEditPanel({
                 Segment Manager below.
               </p>
 
+              {isLocked && (
+                <div className="mt-3 rounded-lg border border-amber/40 bg-amber-light px-4 py-3 text-sm text-amber">
+                  ⚠️ Balancing configuration is locked — journals have been posted to this ledger. This
+                  setting cannot be changed after posting.
+                </div>
+              )}
+
               <div className="mt-2 flex flex-col divide-y divide-border">
                 {sortedSegments.map((seg) => {
                   const badge = balancingBadge(seg.balancingSequence);
@@ -360,8 +366,8 @@ export default function CoaStructureEditPanel({
                           <Button
                             variant="secondary"
                             className="px-2 py-1 text-xs"
-                            disabled={balancingActingId === seg.id || balancingLocked}
-                            title={balancingLocked ? BALANCING_LOCKED_MESSAGE : undefined}
+                            disabled={balancingActingId === seg.id || isLocked}
+                            title={isLocked ? BALANCING_LOCKED_TOOLTIP : undefined}
                             onClick={() => handleClearBalancing(seg)}
                           >
                             Clear Balancing
@@ -393,8 +399,8 @@ export default function CoaStructureEditPanel({
                               key={seq}
                               variant="secondary"
                               className="px-2 py-1 text-xs"
-                              disabled={balancingActingId === seg.id || balancingLocked}
-                              title={balancingLocked ? BALANCING_LOCKED_MESSAGE : undefined}
+                              disabled={balancingActingId === seg.id || isLocked}
+                              title={isLocked ? BALANCING_LOCKED_TOOLTIP : undefined}
                               onClick={() => setConfirmBalancing({ id: seg.id, sequence: seq })}
                             >
                               Set as {seq === 2 ? '2nd' : '3rd'} Balancing
