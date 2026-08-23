@@ -683,3 +683,13 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   table only when `balancingDimensions.length > 0` — empty for ledgers
   with no balancing segments configured (e.g. Orbinox), matching the
   no-balancing-dims fallback used throughout the V30a UI work.
+
+## V30b Balancing Segment Journal Entry Warning (August 2026)
+- BALANCING_SEGMENT_CROSSED error code → purple banner (not generic toast)
+- balancingError state: cleared on line edit + on each save attempt
+- balancingDimensions: loaded via getCoaStructureByLedger + getBalancingDimensions
+- Pre-submission warning: amber (client-side, best-effort)
+- Post-submission error: purple (authoritative, from backend)
+- Info note: shown above lines table only when balancing dims configured
+- All 3 changes hidden for Orbinox (balancingDimensions=[])
+- getBalancingDimensions fail-soft — never breaks page load
