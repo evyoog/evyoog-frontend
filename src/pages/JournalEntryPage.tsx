@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
   createJournal,
+  getBalancingDimensions,
+  getCoaStructureByLedger,
   getPeriodStatus,
   listChartOfAccounts,
   listDimensionValues,
@@ -151,6 +153,8 @@ export default function JournalEntryPage() {
   const [productDim, setProductDim] = useState<FinanceDimension | null>(null);
   const [costCentreValues, setCostCentreValues] = useState<DimensionValue[]>([]);
   const [productValues, setProductValues] = useState<DimensionValue[]>([]);
+  const [balancingDimensions, setBalancingDimensions] = useState<FinanceDimension[]>([]);
+  const [balancingError, setBalancingError] = useState<string | null>(null);
 
   const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
   const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
@@ -158,6 +162,30 @@ export default function JournalEntryPage() {
   const linesReady = lines.every(
     (l) => l.naturalAccountValueId && (!costCentreDim?.isRequired || l.costCentreCode),
   );
+
+  const detectBalancingCrossing = (): string | null => {
+    if (!balancingDimensions || balancingDimensions.length === 0) return null;
+
+    for (const dim of balancingDimensions) {
+      const values = new Set(
+        lines
+          .filter((l) => l.naturalAccountValueId)
+          .map((l) => {
+            if (dim.dimensionType === 'COST_CENTRE') return l.costCentreCode;
+            if (dim.dimensionType === 'PRODUCT') return l.productCode;
+            return null;
+          })
+          .filter((v): v is string => Boolean(v)),
+      );
+
+      if (values.size > 1) {
+        return `Warning: Lines have different ${dim.name} values (${[...values].join(', ')}). This journal will be rejected if ${dim.name} is a balancing segment.`;
+      }
+    }
+    return null;
+  };
+
+  const crossingWarning = detectBalancingCrossing();
 
   useEffect(() => {
     if (!user) return;
@@ -200,6 +228,16 @@ export default function JournalEntryPage() {
           if (cancelled) return;
           setCostCentreValues(costVals.filter((v) => v.isActive));
           setProductValues(prodVals.filter((v) => v.isActive));
+
+          try {
+            const coaStructure = await getCoaStructureByLedger(ledger.id);
+            if (coaStructure?.id) {
+              const balancing = await getBalancingDimensions(coaStructure.id);
+              if (!cancelled) setBalancingDimensions(balancing);
+            }
+          } catch {
+            // Balancing segment info is non-critical — page still works without it.
+          }
         }
       })
       .catch(() => {
@@ -263,6 +301,7 @@ export default function JournalEntryPage() {
   const updateLine = (key: string, patch: Partial<DraftLine>) => {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
     setIsDirty(true);
+    setBalancingError(null);
   };
 
   const selectAccount = (key: string, accountId: string) => {
@@ -355,6 +394,7 @@ export default function JournalEntryPage() {
       showToast('Please fix the highlighted errors before continuing.', 'error');
       return;
     }
+    setBalancingError(null);
     setSaving(submitForApproval ? 'submit' : 'draft');
     try {
       const journal = await createJournal({
@@ -376,7 +416,15 @@ export default function JournalEntryPage() {
       setIsDirty(false);
       showToast(`Journal ${journal.journalNumber} saved successfully.`, 'success');
       setTimeout(() => navigate('/dashboard'), 1200);
-    } catch {
+    } catch (error) {
+      const errorCode = (error as { response?: { data?: { code?: string; message?: string } } })
+        ?.response?.data?.code;
+      const errorMessage = (error as { response?: { data?: { code?: string; message?: string } } })
+        ?.response?.data?.message;
+      if (errorCode === 'BALANCING_SEGMENT_CROSSED') {
+        setBalancingError(errorMessage ?? 'This journal crosses a balancing segment boundary.');
+        return;
+      }
       showToast('Failed to save journal. Please check the entries and try again.', 'error');
     } finally {
       setSaving(null);
@@ -464,6 +512,12 @@ export default function JournalEntryPage() {
             <h2 className="mt-6 mb-3 text-sm font-semibold uppercase tracking-wide text-slate">
               Journal Lines <span className="text-red-500">*</span>
             </h2>
+            {balancingDimensions.length > 0 && (
+              <p className="mb-2 text-xs text-purple-600">
+                ⚖ Balancing segments active: {balancingDimensions.map((d) => d.name).join(', ')}.
+                All lines must use the same value for each balancing segment.
+              </p>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[860px] text-left text-sm">
                 <thead>
@@ -626,6 +680,30 @@ export default function JournalEntryPage() {
                 {isBalanced ? '✓ Balanced' : '✗ Unbalanced'}
               </span>
             </div>
+
+            {balancingError && (
+              <div className="mt-4 rounded-lg border border-purple-200 bg-purple-50 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="text-purple-600 text-lg">⚖️</span>
+                  <div>
+                    <p className="font-semibold text-purple-800 text-sm">
+                      Balancing Segment Crossing Detected
+                    </p>
+                    <p className="text-purple-700 text-sm mt-1">{balancingError}</p>
+                    <p className="text-purple-600 text-xs mt-2">
+                      Tip: Ensure all journal lines use the same value for each balancing
+                      dimension, or use separate journal entries per segment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {crossingWarning && !balancingError && (
+              <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-3">
+                <p className="text-amber-700 text-sm">⚠️ {crossingWarning}</p>
+              </div>
+            )}
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               {hasPermission('gl:journal:create') && (

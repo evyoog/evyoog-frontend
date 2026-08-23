@@ -655,3 +655,31 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - DimensionValuesPage: ⚖ icon on tab + purple banner when isBalancing=true
 - Legal Entity always shown as implicit primary (not a finance_dimension row)
 - NATURAL_ACCOUNT excluded from balancing toggle (account type, not balancing)
+
+## V30b Balancing Segment Journal Entry Warning (August 2026)
+- JournalEntryPage.tsx: on mount (inside the existing lookups useEffect,
+  after finance dimensions/dim values load), fetches
+  `getCoaStructureByLedger(ledger.id)` → `getBalancingDimensions(coaStructure.id)`
+  into a new `balancingDimensions: FinanceDimension[]` state, wrapped in its
+  own inner try/catch (fail-soft — a failure here never blocks the rest of
+  page load or sets the page-level lookup error, same pattern as the
+  KPI/GST fail-soft fetches on DashboardPage).
+- `balancingError: string | null` state holds the backend's literal message
+  when `POST /gl/journals` fails with `error.response.data.code ===
+  'BALANCING_SEGMENT_CROSSED'` — shown as a purple/indigo banner below the
+  totals bar (not a generic toast). Any other error code still falls
+  through to the existing generic toast. Cleared on every `updateLine()`
+  call (any line edit) and at the start of every `handleSave()` attempt.
+- Client-side `detectBalancingCrossing()` is a best-effort pre-submission
+  check only (real enforcement is server-side PostingEngine Rule 11): for
+  each dimension in `balancingDimensions`, collects the distinct
+  costCentreCode/productCode across lines that have an account selected,
+  and returns a warning string if more than one distinct value is found.
+  Rendered as an amber (not red/purple) warning below the totals bar,
+  suppressed whenever `balancingError` is already showing (avoids showing
+  both an amber pre-check warning and a purple confirmed-rejection banner
+  at once).
+- Info note ("⚖ Balancing segments active: …") rendered above the lines
+  table only when `balancingDimensions.length > 0` — empty for ledgers
+  with no balancing segments configured (e.g. Orbinox), matching the
+  no-balancing-dims fallback used throughout the V30a UI work.
