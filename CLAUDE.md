@@ -693,3 +693,8 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Info note: shown above lines table only when balancing dims configured
 - All 3 changes hidden for Orbinox (balancingDimensions=[])
 - getBalancingDimensions fail-soft — never breaks page load
+
+## GitHub Repository (August 2026)
+- Transferred from prashantha-vyoog to evyoog org
+- Backend:  https://github.com/evyoog/evyoog-gl
+- Frontend: https://github.com/evyoog/evyoog-frontend
