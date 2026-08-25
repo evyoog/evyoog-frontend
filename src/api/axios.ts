@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-const BASE_URL = 'https://turbo-spork-xr5pj4xv976gfv9jj-8080.app.github.dev';
+const BASE_URL = 'https://finance-api.evyoog.com';
 
 const api = axios.create({
   baseURL: BASE_URL,
