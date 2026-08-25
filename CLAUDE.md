@@ -802,3 +802,20 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   was not exercised — same limitation as every other screen built this
   way (see Enterprise Structure, COA Structure, Ledger Setup sections
   above).
+
+## AIE Excel Import Screen (August 2026)
+- Route: /aie-import — Permission: gl:journal:create
+- Sidebar: Finance section after Journal Listing
+- 3-step flow: Config → Upload → Result
+- Template download: GET /api/v1/aie/excel/template (blob download)
+- Upload: POST /api/v1/aie/excel/import (multipart/form-data)
+- Query params: legalEntityId, ledgerId, accountingPeriodId, createdBy, sourceSystem
+- Only OPEN periods shown in period dropdown
+- File validation: .xlsx only, max 10MB — inline error (not toast)
+- Result: POSTED=green, PARTIAL=amber, FAILED=red
+- Error table: Line# | Error Code | Error Message | Field
+- CSV error export: client-side blob download
+- View Journal: navigates to /journals?search={journalNumber}
+- JournalListingPage: added search query param + client-side row highlight
+- Import History: Phase 2 (no list-batches endpoint yet)
+- getBatchStatus/getBatchErrors/resubmitBatch: added to gl.ts, unused Phase 1
