@@ -739,3 +739,11 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   updatedBy round trip (PATCH /users/{id}, and the updatedBy field
   actually coming back on GET responses) was not exercised against real
   API data — same limitation noted on every other screen built this way.
+
+## V31 WHO Columns Frontend (August 2026)
+- updatedBy: user?.email ?? 'SYSTEM' passed in Role + ApprovalPolicy updates
+- New updateUser() in users.ts → PATCH /api/v1/auth/users/{id}
+- New Edit User modal in UserManagementPage (fullName + isActive)
+- "Last updated by [email] on [date]" shown in edit panels when updatedBy present
+- updatedBy/updatedAt added as optional to Role, ApprovalPolicy, AppUser types
+- Kept existing PUT endpoints (not PATCH) — matched real API
