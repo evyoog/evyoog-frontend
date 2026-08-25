@@ -698,3 +698,44 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Transferred from prashantha-vyoog to evyoog org
 - Backend:  https://github.com/evyoog/evyoog-gl
 - Frontend: https://github.com/evyoog/evyoog-frontend
+
+## V31 WHO Columns UI Fix (August 2026) deviations
+- updateRole / updateApprovalPolicy kept their existing, already-working
+  HTTP method and endpoint (PUT /api/v1/auth/roles/{id} and
+  PUT /api/v1/auth/approval-policies/{id}, both already wired up and used
+  elsewhere in this file, e.g. deleteApprovalPolicy's plural path) —
+  did NOT switch to the build spec's stated "PATCH .../roles/{id}" or the
+  singular "PATCH .../approval-policy/{id}", since neither was confirmed
+  and both existing endpoints already work. Only `updatedBy: string` was
+  added to each request body type + call site.
+- updateApprovalPolicy's body keeps the real, already-used field names
+  (journalSourceCode, requiresApproval, businessUnitId, inventoryOrgId,
+  approvalThresholdAmount, approverRoleCode) — did NOT adopt the build
+  spec's suggested { minAmount, requiredRoleCode, isActive } shape, which
+  doesn't match the `ApprovalPolicy` type or any existing caller and
+  looks like a guessed/wrong field set for this endpoint (see CLAUDE.md's
+  standing rule not to guess backend field names).
+- updateUser is genuinely new (no prior update-user call existed on
+  UserManagementPage.tsx — only createUser/deactivateUser/
+  resetUserPassword). Added `updateUser` (PATCH /api/v1/auth/users/{id},
+  body { fullName?, isActive?, updatedBy }) to users.ts, plus a new "Edit"
+  button + modal (Full Name, Active checkbox) on UserManagementPage.tsx,
+  since editing a user's fullName/isActive had no UI entry point before.
+  Left the existing separate Deactivate button/deactivateUser endpoint
+  untouched — Edit is an additive flow, not a replacement.
+- `Role`, `ApprovalPolicy`, and `AppUser` types extended with optional
+  `updatedBy?: string | null` and `updatedAt?: string | null`. Only
+  `updated_by` was confirmed added to these tables by the V31 backend
+  migration per the build spec; `updatedAt` was added alongside it as a
+  reasonable pairing (WHO display needs a timestamp to show next to the
+  email) rather than a separately confirmed field — worth confirming
+  against a live backend response.
+- WHO display only shows "Last updated by {email} on {date}" (gated on
+  `updatedBy` being truthy) — did NOT add a "Created by" line, since no
+  `createdBy` field was confirmed added to Role/ApprovalPolicy by this
+  migration (`AppUser` already had `createdAt` but never had `createdBy`).
+- Verified via `tsc -b` (clean), `oxlint` (clean), and `vite build`
+  (clean). No backend was running in this environment, so the live
+  updatedBy round trip (PATCH /users/{id}, and the updatedBy field
+  actually coming back on GET responses) was not exercised against real
+  API data — same limitation noted on every other screen built this way.

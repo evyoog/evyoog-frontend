@@ -16,7 +16,7 @@ import {
 } from '../api/users';
 import { listJournalSources } from '../api/gl';
 import type { ApprovalPolicy, JournalSource, Role } from '../types';
-import { formatINR } from '../utils/format';
+import { formatDate, formatINR } from '../utils/format';
 
 function YesNoBadge({ value }: { value: boolean }) {
   return (
@@ -165,7 +165,7 @@ export default function ApprovalPolicyPage() {
         approverRoleCode: form.requiresApproval && form.approverRoleCode ? form.approverRoleCode : null,
       };
       if (editing) {
-        await updateApprovalPolicy(editing.id, body);
+        await updateApprovalPolicy(editing.id, { ...body, updatedBy: user?.email ?? 'SYSTEM' });
         showToast('Approval policy updated successfully.', 'success');
       } else {
         await createApprovalPolicy({ ...body, legalEntityId: user.legalEntityId });
@@ -459,6 +459,14 @@ export default function ApprovalPolicyPage() {
                 </div>
               )}
             </div>
+
+            {editing?.updatedBy && (
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-slate">
+                  Last updated by {editing.updatedBy} on {formatDate(editing.updatedAt)}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}

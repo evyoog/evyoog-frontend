@@ -10,6 +10,7 @@ import { useToast } from '../context/ToastContext';
 import { createRole, listRoles, updateRole } from '../api/users';
 import type { Role } from '../types';
 import { PERMISSION_CATALOG, permissionLabel } from '../utils/permissions';
+import { formatDate } from '../utils/format';
 
 function TypeBadge({ isSystemRole }: { isSystemRole: boolean }) {
   return (
@@ -144,6 +145,7 @@ export default function RoleManagementPage() {
           description: form.description.trim(),
           permissionCodes,
           isActive: editing.isActive,
+          updatedBy: user?.email ?? 'SYSTEM',
         });
         showToast('Role updated successfully.', 'success');
       } else {
@@ -173,6 +175,7 @@ export default function RoleManagementPage() {
         description: r.description ?? '',
         permissionCodes: r.permissions,
         isActive: false,
+        updatedBy: user?.email ?? 'SYSTEM',
       });
       showToast('Role deactivated.', 'success');
       await load();
@@ -445,6 +448,14 @@ export default function RoleManagementPage() {
                 );
               })}
             </div>
+
+            {editing?.updatedBy && (
+              <div className="mt-2 border-t border-border pt-3">
+                <p className="text-xs text-slate">
+                  Last updated by {editing.updatedBy} on {formatDate(editing.updatedAt)}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}

@@ -24,6 +24,14 @@ export async function deactivateUser(userId: string) {
   return data;
 }
 
+export async function updateUser(
+  userId: string,
+  body: { fullName?: string; isActive?: boolean; updatedBy: string },
+) {
+  const { data } = await api.patch<ApiResponse<AppUser>>(`/api/v1/auth/users/${userId}`, body);
+  return data.data;
+}
+
 export async function resetUserPassword(userId: string, newPassword: string) {
   const { data } = await api.post<ApiResponse<unknown>>(
     `/api/v1/auth/users/${userId}/reset-password`,
@@ -73,7 +81,13 @@ export async function createRole(body: {
 
 export async function updateRole(
   roleId: string,
-  body: { name: string; description: string; permissionCodes: string[]; isActive: boolean },
+  body: {
+    name: string;
+    description: string;
+    permissionCodes: string[];
+    isActive: boolean;
+    updatedBy: string;
+  },
 ) {
   const { data } = await api.put<ApiResponse<Role>>(`/api/v1/auth/roles/${roleId}`, body);
   return data.data;
@@ -108,6 +122,7 @@ export async function updateApprovalPolicy(
     inventoryOrgId: string | null;
     approvalThresholdAmount: number | null;
     approverRoleCode: string | null;
+    updatedBy: string;
   },
 ) {
   const { data } = await api.put<ApiResponse<ApprovalPolicy>>(

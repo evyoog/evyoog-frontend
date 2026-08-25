@@ -206,6 +206,8 @@ export interface AppUser {
   mustChangePwd: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface UserRoleAssignment {
@@ -225,6 +227,8 @@ export interface Role {
   isSystemRole: boolean;
   isActive: boolean;
   permissions: string[];
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ApprovalPolicy {
@@ -237,6 +241,8 @@ export interface ApprovalPolicy {
   approvalThresholdAmount: number | null;
   approverRoleCode: string | null;
   isActive: boolean;
+  updatedBy?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface TrialBalanceRow {

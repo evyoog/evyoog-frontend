@@ -16,6 +16,7 @@ import {
   listRoles,
   listUsers,
   resetUserPassword,
+  updateUser,
 } from '../api/users';
 import type { AppUser, Role, UserRoleAssignment } from '../types';
 import { formatDate } from '../utils/format';
@@ -60,6 +61,11 @@ interface ResetPasswordFormState {
 
 const EMPTY_RESET_FORM: ResetPasswordFormState = { newPassword: '', confirmPassword: '' };
 
+interface EditUserFormState {
+  fullName: string;
+  isActive: boolean;
+}
+
 export default function UserManagementPage() {
   const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
@@ -79,6 +85,11 @@ export default function UserManagementPage() {
   const [saving, setSaving] = useState(false);
 
   const [rolesPanelUser, setRolesPanelUser] = useState<AppUser | null>(null);
+
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [editForm, setEditForm] = useState<EditUserFormState>({ fullName: '', isActive: true });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
 
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetForm, setResetForm] = useState<ResetPasswordFormState>(EMPTY_RESET_FORM);
@@ -164,6 +175,35 @@ export default function UserManagementPage() {
       showToast('Failed to create user. Please try again.', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openEditUser = (u: AppUser) => {
+    setEditingUser(u);
+    setEditForm({ fullName: u.fullName, isActive: u.isActive });
+    setEditError(null);
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+    if (!editForm.fullName.trim()) {
+      setEditError('Full name is required');
+      return;
+    }
+    setEditSaving(true);
+    try {
+      await updateUser(editingUser.id, {
+        fullName: editForm.fullName.trim(),
+        isActive: editForm.isActive,
+        updatedBy: user?.email ?? 'SYSTEM',
+      });
+      showToast('User updated successfully.', 'success');
+      setEditingUser(null);
+      await load();
+    } catch {
+      showToast('Failed to update user. Please try again.', 'error');
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -394,6 +434,14 @@ export default function UserManagementPage() {
                             <Button
                               variant="secondary"
                               className="px-2 py-1 text-xs"
+                              onClick={() => openEditUser(u)}
+                              aria-label={`Edit ${u.fullName}`}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="px-2 py-1 text-xs"
                               onClick={() => openReset(u)}
                               aria-label={`Reset password for ${u.fullName}`}
                             >
@@ -484,6 +532,49 @@ export default function UserManagementPage() {
               ))}
             </Select>
             {addErrors.roleId && <span className="text-xs text-red-600">{addErrors.roleId}</span>}
+          </div>
+        </Modal>
+      )}
+
+      {editingUser && (
+        <Modal
+          title="Edit User"
+          onClose={() => setEditingUser(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setEditingUser(null)} disabled={editSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditUser} loading={editSaving}>
+                Save
+              </Button>
+            </>
+          }
+        >
+          <div className="flex flex-col gap-4">
+            <Input
+              id="edit-user-full-name"
+              label="Full Name *"
+              value={editForm.fullName}
+              onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+              error={editError ?? undefined}
+            />
+            <label className="flex items-center gap-2 text-sm text-navy">
+              <input
+                type="checkbox"
+                checked={editForm.isActive}
+                onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+              />
+              Active
+            </label>
+
+            {editingUser.updatedBy && (
+              <div className="border-t border-border pt-3">
+                <p className="text-xs text-slate">
+                  Last updated by {editingUser.updatedBy} on {formatDate(editingUser.updatedAt)}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}
