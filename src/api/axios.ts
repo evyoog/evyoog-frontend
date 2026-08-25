@@ -1,7 +1,11 @@
 import axios from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
-const BASE_URL = 'https://finance-api.evyoog.com';
+// Empty in dev so requests stay same-origin (/api/v1/...) and go through the
+// Vite proxy in vite.config.ts — the browser never makes a cross-origin call,
+// so backend CORS is irrelevant locally. Override with VITE_API_BASE_URL for
+// builds served from somewhere other than the API's own origin.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 const api = axios.create({
   baseURL: BASE_URL,
