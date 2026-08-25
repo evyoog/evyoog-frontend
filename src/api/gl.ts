@@ -5,8 +5,11 @@ import type {
   AccountingCalendar,
   AccountingPeriod,
   AccountLedgerReport,
+  AieImportResponse,
+  AieLineError,
   ApiResponse,
   BalanceSheetReport,
+  BatchStatus,
   BusinessUnit,
   CashFlowReport,
   ChartOfAccountsResponse,
@@ -626,6 +629,50 @@ export async function assignCoaStructureToLedger(id: string, ledgerId: string) {
   const { data } = await api.post<ApiResponse<CoaStructure>>(
     `/api/v1/gl/coa-structures/${id}/assign-ledger`,
     { ledgerId },
+  );
+  return data.data;
+}
+
+export async function downloadAieTemplate() {
+  const res = await api.get('/api/v1/aie/excel/template', { responseType: 'blob' });
+  return res.data as Blob;
+}
+
+export async function importAieExcel(
+  file: File,
+  params: {
+    legalEntityId: string;
+    ledgerId: string;
+    accountingPeriodId: string;
+    createdBy: string;
+    sourceSystem?: string;
+  },
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<ApiResponse<AieImportResponse>>(
+    '/api/v1/aie/excel/import',
+    formData,
+    { params, headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data;
+}
+
+export async function getBatchStatus(batchId: string) {
+  const { data } = await api.get<ApiResponse<BatchStatus>>(`/api/v1/aie/batches/${batchId}`);
+  return data.data;
+}
+
+export async function getBatchErrors(batchId: string) {
+  const { data } = await api.get<ApiResponse<AieLineError[]>>(
+    `/api/v1/aie/batches/${batchId}/errors`,
+  );
+  return data.data;
+}
+
+export async function resubmitBatch(batchId: string) {
+  const { data } = await api.post<ApiResponse<AieImportResponse>>(
+    `/api/v1/aie/batches/${batchId}/resubmit`,
   );
   return data.data;
 }

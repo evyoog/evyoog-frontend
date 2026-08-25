@@ -24,6 +24,7 @@ import RoleManagementPage from './pages/RoleManagementPage';
 import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import EnterpriseStructurePage from './pages/EnterpriseStructurePage';
+import AieImportPage from './pages/AieImportPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +61,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <JournalListingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/aie-import"
+              element={
+                <ProtectedRoute>
+                  <AieImportPage />
                 </ProtectedRoute>
               }
             />

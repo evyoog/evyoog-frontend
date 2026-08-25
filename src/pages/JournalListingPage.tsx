@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -36,6 +37,8 @@ function formatWait(journal: Journal): string {
 export default function JournalListingPage() {
   const { user, hasPermission } = useAuth();
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightNumber = searchParams.get('search');
   const [pendingApprovals, setPendingApprovals] = useState<Journal[]>([]);
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodFilter, setPeriodFilter] = useState('');
@@ -120,6 +123,22 @@ export default function JournalListingPage() {
     <AppLayout breadcrumb="Journal Listing">
       <h1 className="text-2xl font-bold text-navy">Journal Listing</h1>
       <p className="mt-1 text-sm text-slate">All journal entries for the current legal entity</p>
+
+      {highlightNumber && (
+        <div className="mt-4 flex items-center justify-between rounded-md border border-blue-light bg-blue-light/40 px-4 py-3 text-sm text-navy">
+          <span>
+            Showing journal <span className="font-mono font-medium">{highlightNumber}</span> from
+            import
+          </span>
+          <button
+            type="button"
+            onClick={() => setSearchParams({})}
+            className="text-xs font-medium text-blue hover:underline"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {pendingApprovals.length > 0 && (
         <Card className="mt-6">
@@ -232,7 +251,14 @@ export default function JournalListingPage() {
                 </thead>
                 <tbody>
                   {journals.map((j) => (
-                    <tr key={j.id} className="border-b border-border last:border-0 hover:bg-offwhite">
+                    <tr
+                      key={j.id}
+                      className={`border-b border-border last:border-0 hover:bg-offwhite ${
+                        highlightNumber && j.journalNumber === highlightNumber
+                          ? 'bg-blue-light/40 ring-1 ring-inset ring-blue'
+                          : ''
+                      }`}
+                    >
                       <td className="py-2 pr-2 font-mono text-navy">{j.journalNumber}</td>
                       <td className="py-2 pr-2">{formatDate(j.glDate)}</td>
                       <td className="py-2 pr-2">{j.periodName}</td>

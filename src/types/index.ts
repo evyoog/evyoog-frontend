@@ -570,6 +570,43 @@ export interface BusinessUnit {
   updatedAt: string;
 }
 
+export interface AieLineError {
+  lineNumber: number;
+  errorCode: string;
+  errorMessage: string;
+  errorStage: string;
+  fieldName: string | null;
+}
+
+export interface AieImportResponse {
+  batchId: string;
+  batchReference: string;
+  eventId: string;
+  status: string;
+  totalLines: number;
+  validLines: number;
+  errorLines: number;
+  journalHeaderId: string | null;
+  journalNumber: string | null;
+  message: string;
+  errors: AieLineError[];
+}
+
+export interface BatchStatus {
+  batchId: string;
+  batchReference: string;
+  eventId: string;
+  sourceSystem: string;
+  status: string;
+  totalLines: number;
+  validLines: number;
+  errorLines: number;
+  errorSummary: string | null;
+  journalHeaderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CashFlowReport {
   legalEntityId: string;
   legalEntityName: string;

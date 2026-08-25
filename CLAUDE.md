@@ -747,3 +747,58 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - "Last updated by [email] on [date]" shown in edit panels when updatedBy present
 - updatedBy/updatedAt added as optional to Role, ApprovalPolicy, AppUser types
 - Kept existing PUT endpoints (not PATCH) — matched real API
+
+## AIE Excel/CSV Import UI (August 2026)
+- AieImportPage.tsx (/aie-import) — Configuration card (Period/Source/
+  Download Template) → Upload card (drag-drop or click-to-browse .xlsx,
+  10MB cap) → Result card (Success/Partial/Failed, branched on
+  `AieImportResponse.status` + `errorLines`), per the build spec's 3-step
+  layout. Permission-gated on `gl:journal:create` (same as Journal Entry),
+  added to Sidebar.tsx under Finance right after Journal Listing.
+- New types (`AieImportResponse`, `AieLineError`, `BatchStatus`) added to
+  types/index.ts and new API functions (`downloadAieTemplate`,
+  `importAieExcel`, `getBatchStatus`, `getBatchErrors`) added to gl.ts per
+  the spec's confirmed-live shapes. `resubmitBatch` (POST
+  /aie/batches/{id}/resubmit) was also added for API-surface parity with
+  the documented endpoint list, but — like `getBalancingDimensions`/
+  `getLedger` before it — has no UI call site on this screen (Phase 1
+  scope only covers upload → result, not batch retry).
+- Legal Entity + Ledger resolved the same way as JournalEntryPage:
+  `user.legalEntityId` from AuthContext, then `listLedgers(legalEntityId)[0]`.
+  Open periods use the same `getPeriodStatus(legalEntityId).filter(p =>
+  p.status === 'OPEN')` pattern already established there — did NOT add a
+  second call to `listAccountingPeriods`/`getAccountingCalendar` since
+  `PeriodStatus` already carries `periodName` + `accountingPeriodId`,
+  which is all this screen's dropdown needs.
+- Per the build spec's explicit "Phase 1" note, Import History/batch-list
+  was skipped entirely (no "list all batches" endpoint exists) — the
+  screen only ever shows the current session's single import result, not
+  a persisted history list. `getBatchStatus`/`getBatchErrors` were added
+  to gl.ts per the confirmed API list but have no call site yet (would
+  back a Phase 2 history/retry view).
+- "View Journal →" navigates to `/journals?search={journalNumber}` as the
+  spec asks, but JournalListingPage never had a search feature (confirmed
+  in the P1 Retrofit Layer 3 section above — "no free-text search input
+  ... N/A"). Rather than invent a backend search/filter param (against
+  CLAUDE.md's standing rule not to guess backend contracts),
+  JournalListingPage.tsx was given a small additive enhancement: it now
+  reads a `search` query param via `useSearchParams`, shows a dismissible
+  "Showing journal {number} from import" banner, and highlights the
+  matching row (by `journalNumber`) with a blue ring/background — purely
+  client-side against whatever page of results already loaded, with no
+  new API call. If the imported journal isn't on the currently loaded
+  page, the highlight simply won't find a match; no pagination-jump logic
+  was added (out of scope for this build).
+- File validation (`.xlsx` extension + 10MB cap) is client-side only, via
+  `validateAndSetFile()` — shown as an inline amber warning (not a toast),
+  per spec. Drag-and-drop (`onDragOver`/`onDragLeave`/`onDrop`) is newly
+  built for this screen; no existing drag-drop component/pattern existed
+  elsewhere in the codebase to reuse (ChartOfAccountsPage's importer uses
+  a plain `<input type="file">`, no drag-drop).
+- Verified via `tsc -b` (clean), `oxlint` (no new warnings), `vite build`
+  (clean), and dev-server boot checks on `/aie-import` and `/journals`
+  (both → 200). No backend was running in this environment, so the live
+  template-download / upload-and-import round trip against real API data
+  was not exercised — same limitation as every other screen built this
+  way (see Enterprise Structure, COA Structure, Ledger Setup sections
+  above).
