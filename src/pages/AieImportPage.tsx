@@ -71,9 +71,10 @@ export default function AieImportPage() {
   }, [loadLookups]);
 
   const handleDownloadTemplate = async () => {
+    if (!ledger) return;
     setDownloading(true);
     try {
-      const blob = await downloadAieTemplate();
+      const blob = await downloadAieTemplate(ledger.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -633,8 +633,11 @@ export async function assignCoaStructureToLedger(id: string, ledgerId: string) {
   return data.data;
 }
 
-export async function downloadAieTemplate() {
-  const res = await api.get('/api/v1/aie/excel/template', { responseType: 'blob' });
+export async function downloadAieTemplate(ledgerId: string) {
+  const res = await api.get('/api/v1/aie/excel/template', {
+    params: { ledgerId },
+    responseType: 'blob',
+  });
   return res.data as Blob;
 }
 
