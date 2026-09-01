@@ -846,3 +846,16 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - JournalListingPage: added search query param + client-side row highlight
 - Import History: Phase 2 (no list-batches endpoint yet)
 - getBatchStatus/getBatchErrors/resubmitBatch: added to gl.ts, unused Phase 1
+
+## Opening Balance Import Screen (September 2026)
+- Route: /opening-balance-import — Permission: gl:journal:create
+- Sidebar: Finance section after Journal Import
+- 4-step flow: Config → Upload → Preview → Result
+- Template: GET /api/v1/gl/opening-balances/template?ledgerId={id}
+- Preview: POST /preview — shows DR/CR auto-classification before posting
+- Import: POST /import — only called after user confirms preview
+- Post button gated: isBalanced && errorLines === 0
+- Qualifier badges: ASSET=blue, LIABILITY=amber, EQUITY=green, REVENUE=purple, EXPENSE=red
+- DR/CR badges: DR=navy, CR=slate
+- File kept in state — same file used for preview and import
+- Follows AieImportPage drag-drop pattern
