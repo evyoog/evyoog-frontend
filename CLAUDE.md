@@ -803,6 +803,33 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   way (see Enterprise Structure, COA Structure, Ledger Setup sections
   above).
 
+## Opening Balance Import UI (September 2026)
+- OpeningBalanceImportPage.tsx (/opening-balance-import) — Config → Upload →
+  Preview → Result, following the same drag-drop/period-dropdown pattern as
+  AieImportPage.tsx. Permission: gl:journal:create. Sidebar: Finance section,
+  right after Journal Import.
+- Two-step flow is enforced in the UI: POST /opening-balances/preview always
+  runs first (Preview Balances button), and POST /opening-balances/import
+  (Post Opening Balances button) only appears/enables once
+  `preview.isBalanced && preview.errorLines === 0` — never auto-posts.
+- The same `File` object in state is reused for both the preview and import
+  calls (no re-upload prompt between steps), per the build spec.
+- New API functions `downloadObTemplate`, `previewOpeningBalances`,
+  `importOpeningBalances` added to gl.ts; new types
+  `OpeningBalancePreviewLine`, `OpeningBalancePreviewResponse`,
+  `OpeningBalanceImportResponse` added to types/index.ts.
+- Qualifier badge colors (ASSET=blue, LIABILITY=amber, EQUITY=green,
+  REVENUE=purple, EXPENSE=red) and DR/CR badge colors (DR=navy, CR=slate)
+  match the build spec exactly.
+- "View Journal →" reuses the existing `/journals?search={journalNumber}`
+  + JournalListingPage highlight pattern from AIE Import — no new wiring
+  needed there.
+- Verified via `tsc -b` (clean), `oxlint` (clean), `vite build` (clean), and
+  dev-server boot checks on `/opening-balance-import` and `/journals` (both
+  → 200). No backend was running in this environment, so the live
+  preview/post round trip against real API data was not exercised — same
+  limitation noted on every other screen built this way.
+
 ## AIE Excel Import Screen (August 2026)
 - Route: /aie-import — Permission: gl:journal:create
 - Sidebar: Finance section after Journal Listing

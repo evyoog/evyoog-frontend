@@ -607,6 +607,43 @@ export interface BatchStatus {
   updatedAt: string;
 }
 
+export interface OpeningBalancePreviewLine {
+  lineNumber: number;
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  normalBalance: string;
+  costCentreCode: string | null;
+  productCode: string | null;
+  balance: number;
+  drAmount: number;
+  crAmount: number;
+  description: string;
+  errorMessage: string | null;
+}
+
+export interface OpeningBalancePreviewResponse {
+  totalLines: number;
+  validLines: number;
+  errorLines: number;
+  totalDr: number;
+  totalCr: number;
+  isBalanced: boolean;
+  imbalanceAmount: number;
+  lines: OpeningBalancePreviewLine[];
+  errors: string[];
+}
+
+export interface OpeningBalanceImportResponse {
+  success: boolean;
+  journalHeaderId: string | null;
+  journalNumber: string | null;
+  totalLines: number;
+  postedLines: number;
+  message: string;
+  errors: string[];
+}
+
 export interface CashFlowReport {
   legalEntityId: string;
   legalEntityName: string;

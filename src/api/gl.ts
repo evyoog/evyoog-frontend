@@ -24,6 +24,8 @@ import type {
   Ledger,
   LegalEntity,
   LegalEntityLedger,
+  OpeningBalanceImportResponse,
+  OpeningBalancePreviewResponse,
   Page,
   PeriodStatus,
   PLBySegmentReport,
@@ -676,6 +678,47 @@ export async function getBatchErrors(batchId: string) {
 export async function resubmitBatch(batchId: string) {
   const { data } = await api.post<ApiResponse<AieImportResponse>>(
     `/api/v1/aie/batches/${batchId}/resubmit`,
+  );
+  return data.data;
+}
+
+export async function downloadObTemplate(ledgerId: string) {
+  const res = await api.get('/api/v1/gl/opening-balances/template', {
+    params: { ledgerId },
+    responseType: 'blob',
+  });
+  return res.data as Blob;
+}
+
+export async function previewOpeningBalances(
+  file: File,
+  params: { legalEntityId: string; ledgerId: string; accountingPeriodId: string },
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<ApiResponse<OpeningBalancePreviewResponse>>(
+    '/api/v1/gl/opening-balances/preview',
+    formData,
+    { params, headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data.data;
+}
+
+export async function importOpeningBalances(
+  file: File,
+  params: {
+    legalEntityId: string;
+    ledgerId: string;
+    accountingPeriodId: string;
+    createdBy: string;
+  },
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<ApiResponse<OpeningBalanceImportResponse>>(
+    '/api/v1/gl/opening-balances/import',
+    formData,
+    { params, headers: { 'Content-Type': 'multipart/form-data' } },
   );
   return data.data;
 }

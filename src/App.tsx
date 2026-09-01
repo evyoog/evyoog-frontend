@@ -25,6 +25,7 @@ import ApprovalPolicyPage from './pages/ApprovalPolicyPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import EnterpriseStructurePage from './pages/EnterpriseStructurePage';
 import AieImportPage from './pages/AieImportPage';
+import OpeningBalanceImportPage from './pages/OpeningBalanceImportPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -69,6 +70,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <AieImportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/opening-balance-import"
+              element={
+                <ProtectedRoute>
+                  <OpeningBalanceImportPage />
                 </ProtectedRoute>
               }
             />
