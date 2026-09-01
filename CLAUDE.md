@@ -910,3 +910,15 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   environment, so the live create/edit/delete/generate/view-periods round
   trip against real API data was not exercised — same limitation noted on
   every other screen built this way.
+
+## Calendar Management Screen (September 2026)
+- Route: /calendar-management — Permission: gl:ledger:manage
+- Sidebar: Accounting Configuration — between Ledger Setup and Finance Dimensions
+- Calendar cards: FY range, period type badge, generated period count
+- View Periods: on-demand load, grouped by fiscal year, pill tabs
+- Create: Ledger dropdown, month picker, period type, initial FY
+- Edit: name + description only (other fields locked after creation)
+- Delete: disabled once periods exist
+- Generate Next FY: confirmation dialog → POST generate-next endpoint
+- Reused: createCalendar, updateCalendar, listAccountingPeriods,
+  generateNextYearPeriods from existing gl.ts (not duplicated)
