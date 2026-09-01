@@ -451,6 +451,17 @@ export async function generateNextYearPeriods(calendarId: string) {
   return data.data;
 }
 
+export async function listCalendars() {
+  const { data } = await api.get<ApiResponse<AccountingCalendar[]>>(
+    '/api/v1/gl/accounting-calendars',
+  );
+  return data.data;
+}
+
+export async function deleteCalendar(calendarId: string) {
+  await api.delete(`/api/v1/gl/accounting-calendars/${calendarId}`);
+}
+
 export async function listBusinessUnits(legalEntityId: string) {
   const { data } = await api.get<ApiResponse<BusinessUnit[]>>('/api/v1/gl/business-units', {
     params: { legalEntityId },

@@ -386,6 +386,7 @@ export interface AccountingCalendar {
   ledgerId: string;
   ledgerName: string;
   name: string;
+  description?: string | null;
   fiscalYearStartMonth: number;
   fiscalYearStartDay: number;
   periodType: string;

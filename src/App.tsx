@@ -26,6 +26,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
 import EnterpriseStructurePage from './pages/EnterpriseStructurePage';
 import AieImportPage from './pages/AieImportPage';
 import OpeningBalanceImportPage from './pages/OpeningBalanceImportPage';
+import CalendarManagementPage from './pages/CalendarManagementPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -182,6 +183,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <LedgerSetupPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/calendar-management"
+              element={
+                <ProtectedRoute>
+                  <CalendarManagementPage />
                 </ProtectedRoute>
               }
             />

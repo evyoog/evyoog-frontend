@@ -45,6 +45,11 @@ const navSections: NavSection[] = [
       { label: 'COA Structure', to: '/coa-structure', permission: 'gl:ledger:view' },
       { label: 'Dimension Values', to: '/dimension-values', permission: 'gl:dimension:view' },
       { label: 'Ledger Setup', to: '/ledger-setup', permission: 'gl:ledger:view' },
+      {
+        label: 'Calendar Management',
+        to: '/calendar-management',
+        permission: 'gl:ledger:view',
+      },
       { label: 'Finance Dimensions', to: '/finance-dimensions', permission: 'gl:dimension:view' },
       { label: 'Account Combinations', to: '/account-combinations', permission: 'gl:accounts:view' },
       { label: 'Period Management', to: '/period-management', permission: 'gl:period:view' },

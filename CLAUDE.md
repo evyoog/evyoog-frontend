@@ -859,3 +859,54 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - DR/CR badges: DR=navy, CR=slate
 - File kept in state — same file used for preview and import
 - Follows AieImportPage drag-drop pattern
+
+## Calendar Management Screen (September 2026)
+- CalendarManagementPage.tsx (/calendar-management) — standalone calendar
+  CRUD + period viewer, independent of Ledger Setup's inline calendar card.
+  Permission: gl:ledger:view (route/sidebar); gl:ledger:manage gates Add/
+  Edit/Delete/Generate actions, matching CoaStructurePage's/LedgerSetupPage's
+  `canManage` convention. Sidebar: Accounting Configuration, right after
+  Ledger Setup (before Finance Dimensions/Period Management).
+- Reused existing gl.ts functions instead of re-adding duplicates already
+  built for Ledger Setup/Period Management: `createCalendar`, `updateCalendar`
+  (PUT, not PATCH — pre-existing working endpoint, kept per this codebase's
+  standing rule of not switching a confirmed-working method), `generateNextYearPeriods`,
+  and `listAccountingPeriods` (used as this screen's "Get Calendar Periods").
+  Only two functions were genuinely new: `listCalendars()` (GET
+  /accounting-calendars with **no** query params → full array — a different
+  response shape off the same URL than the pre-existing `getAccountingCalendar
+  (ledgerId)`, which passes `ledgerId` and returns a single object) and
+  `deleteCalendar(id)`.
+- `AccountingCalendar` type gained an optional `description?: string | null`
+  field (previously untyped on this interface though returned by the API) —
+  optional so the 3 existing consumers (LedgerSetupPage, PeriodManagementPage,
+  EnterpriseStructurePage) are unaffected.
+- Ledger dropdown in the Create Calendar modal calls `listLedgers()` with
+  **no** legalEntityId — same system-wide-list convention already
+  established for EnterpriseStructurePage's "Assign Ledger" picker — since
+  calendars can belong to a ledger under any Legal Entity, not just the
+  logged-in user's own.
+- "Generate Next FY Periods" confirm dialog names the calendar (not a
+  computed next-FY label) in its confirmation text, for the same reason
+  documented on Ledger Setup's identical confirm: `currentFiscalYear`'s
+  exact string format isn't confirmed enough to safely compute/guess.
+- Delete is disabled (button + tooltip) whenever `generatedPeriodCount > 0`,
+  per the spec's "only if no periods generated" rule — no backend
+  pre-check call, purely derived from the calendar list response already
+  in hand.
+- View Periods loads on demand per card (`listAccountingPeriods`, cached
+  in local state keyed by calendar id) rather than eagerly for every
+  calendar on page load, per the spec's explicit instruction. Periods are
+  grouped by `fiscalYear` into pill-tabs (most recent first, inline
+  tab-bar built the same ad hoc way as Enterprise Structure/Ledger Setup —
+  no shared Tabs component exists yet).
+- The `[⋮ More]` actions menu is a small local dropdown (no shared
+  Menu/Dropdown component existed in src/components/ui before this build);
+  built inline on the card rather than extracted, consistent with this
+  codebase's per-page-helper convention elsewhere.
+- Verified via `tsc -b` (clean), `oxlint` (no new warnings), `vite build`
+  (clean), and dev-server boot checks on `/calendar-management` and
+  `/ledger-setup` (both → 200). No backend was running in this
+  environment, so the live create/edit/delete/generate/view-periods round
+  trip against real API data was not exercised — same limitation noted on
+  every other screen built this way.
