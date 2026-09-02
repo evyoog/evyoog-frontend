@@ -999,3 +999,21 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Generate Next FY: confirmation dialog → POST generate-next endpoint
 - Reused: createCalendar, updateCalendar, listAccountingPeriods,
   generateNextYearPeriods from existing gl.ts (not duplicated)
+
+## Hierarchical Financial Reporting (September 2026)
+- New: src/components/ui/TreeTable.tsx
+  Exports: useTreeExpand (hook), TreeRows (embeddable rows), TreeTable (full component)
+  Expand/Collapse All buttons, depth-indented rows, summary nodes bold
+- Types: HierarchicalTrialBalanceLine, HierarchicalTrialBalanceResponse in types/index.ts
+- API: getHierarchicalTrialBalance() in gl.ts
+- TrialBalancePage: Standard | Hierarchical pill toggle
+  Hierarchical view uses TreeTable with qualifier badges
+  CSV export flattens tree with Depth + IsSummary columns
+  Unit filter skipped — no UNIT DimensionType confirmed in codebase
+- PLStatementPage: Revenue + Expense sections render as expandable trees
+  Uses TreeRows embedded in existing table layout
+  CSV export flattens children
+- BalanceSheetPage: Assets/Liabilities/Equity as expandable trees
+  Uses isSummary field from existing BalanceSheetLineItem type
+- Orbinox demo: all accounts are root nodes (depth=0, children=[]) — correct
+  Unicon Engineers will show real hierarchy when configured
