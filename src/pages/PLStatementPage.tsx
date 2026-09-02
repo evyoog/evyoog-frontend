@@ -3,7 +3,8 @@ import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
-import { ReportSkeleton, ErrorState, EmptyState } from '../components/ui';
+import { ReportSkeleton, ErrorState, EmptyState, TreeRows, useTreeExpand } from '../components/ui';
+import type { TreeTableColumn } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getProfitAndLoss, getPLBySegment, getPeriodStatus } from '../api/gl';
@@ -15,6 +16,22 @@ import type {
   PLBySegmentReport,
 } from '../types';
 import { formatINR } from '../utils/format';
+
+// PLItem has no `isSummary` flag (unlike BalanceSheetItem / the hierarchical
+// trial balance line) — a node with children is treated as a summary node.
+const plIsSummary = (item: PLItem) => (item.children?.length ?? 0) > 0;
+const plGetChildren = (item: PLItem) => item.children ?? [];
+const plGetId = (item: PLItem) => item.accountCode;
+
+const PL_COLUMNS: TreeTableColumn<PLItem>[] = [
+  {
+    header: 'Account Code',
+    render: (item) => <span className="font-mono text-navy">{item.accountCode}</span>,
+  },
+  { header: 'Account Name', render: (item) => item.accountName },
+  { header: 'Period', align: 'right', render: (item) => formatINR(item.netAmount) },
+  { header: 'YTD', align: 'right', render: (item) => formatINR(item.ytdCr - item.ytdDr) },
+];
 
 type ViewMode = 'standard' | 'by-segment';
 type SegmentType = 'COST_CENTRE' | 'PRODUCT';
@@ -32,16 +49,36 @@ function csvCell(value: string) {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
+function flattenPL(items: PLItem[], depth = 0): { item: PLItem; depth: number }[] {
+  return items.flatMap((item) => [
+    { item, depth },
+    ...flattenPL(plGetChildren(item), depth + 1),
+  ]);
+}
+
 function exportStandardCsv(report: PLStatementReport) {
-  const header = ['Account Code', 'Account Name', 'Qualifier', 'Period Net', 'YTD Net'];
-  const toRow = (item: PLItem) => [
+  const header = [
+    'Account Code',
+    'Account Name',
+    'Qualifier',
+    'Depth',
+    'Is Summary',
+    'Period Net',
+    'YTD Net',
+  ];
+  const toRow = ({ item, depth }: { item: PLItem; depth: number }) => [
     item.accountCode,
     item.accountName,
     item.accountQualifier,
+    depth,
+    plIsSummary(item),
     item.netAmount,
     item.ytdCr - item.ytdDr,
   ];
-  const rows = [...report.revenueItems.map(toRow), ...report.expenseItems.map(toRow)];
+  const rows = [
+    ...flattenPL(report.revenueItems).map(toRow),
+    ...flattenPL(report.expenseItems).map(toRow),
+  ];
   const csv = [header, ...rows].map((row) => row.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
@@ -87,23 +124,38 @@ function exportSegmentCsv(report: PLBySegmentReport) {
 }
 
 function PLSection({ title, items, total }: { title: string; items: PLItem[]; total: number }) {
+  const expand = useTreeExpand({
+    nodes: items,
+    getChildren: plGetChildren,
+    getId: plGetId,
+    isSummary: plIsSummary,
+  });
   return (
     <Fragment>
       <tr className="bg-offwhite">
         <td colSpan={4} className="py-2 pr-2 text-xs font-semibold uppercase tracking-wide text-navy">
-          {title}
+          <div className="flex items-center justify-between">
+            <span>{title}</span>
+            <span className="flex gap-3 text-[10px] normal-case tracking-normal text-blue">
+              <button type="button" onClick={expand.expandAll} className="underline">
+                Expand All
+              </button>
+              <button type="button" onClick={expand.collapseAll} className="underline">
+                Collapse All
+              </button>
+            </span>
+          </div>
         </td>
       </tr>
-      {items.map((item) => (
-        <tr key={item.accountCode} className="border-b border-border">
-          <td className="py-2 pr-2 font-mono text-navy">{item.accountCode}</td>
-          <td className="py-2 pr-2">{item.accountName}</td>
-          <td className="py-2 pr-2 text-right font-mono">{formatINR(item.netAmount)}</td>
-          <td className="py-2 pr-2 text-right font-mono">
-            {formatINR(item.ytdCr - item.ytdDr)}
-          </td>
-        </tr>
-      ))}
+      <TreeRows
+        nodes={items}
+        columns={PL_COLUMNS}
+        getChildren={plGetChildren}
+        getId={plGetId}
+        isSummary={plIsSummary}
+        expand={expand}
+        treeColumnIndex={1}
+      />
       <tr className="border-b border-border font-medium">
         <td className="py-2 pr-2" colSpan={2}>
           Total {title}

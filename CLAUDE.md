@@ -911,6 +911,83 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   trip against real API data was not exercised — same limitation noted on
   every other screen built this way.
 
+## Hierarchical Financial Reporting (September 2026)
+- New shared component: src/components/ui/TreeTable.tsx — exports three
+  things, not just a default `TreeTable`: `useTreeExpand` (expand/collapse
+  state hook, re-initialises whenever the `nodes` array identity changes —
+  i.e. on every fresh report load — expanding summary nodes by default),
+  `TreeRows` (recursive `<tr>`s only, no owning `<table>`/`<thead>`, for
+  embedding inside a page's own table alongside existing section-header/
+  subtotal rows), and default export `TreeTable` (full self-contained
+  `<table>` with its own thead + Expand All/Collapse All toolbar + optional
+  `footer` tfoot row) — composed from the same two building blocks. All
+  three exported from src/components/ui/index.ts.
+- `getId` was added as a required TreeTable/TreeRows/useTreeExpand prop
+  (not in the original build spec's interface) since none of the three
+  report node types share a common id field — needed for React keys and
+  expand-state tracking. `getDepth` from the spec's interface was dropped
+  entirely — depth is computed by the component's own recursion instead
+  (simpler, and doesn't require every node type to carry a depth field:
+  PLItem/BalanceSheetItem don't have one).
+- Trial Balance: new "Hierarchical" pill toggle next to "Standard" (same
+  pattern as the pre-existing P&L Standard/By-Segment toggle). Hierarchical
+  view calls new `getHierarchicalTrialBalance()` (gl.ts) →
+  GET /api/v1/gl/reports/hierarchical-trial-balance, rendered via the
+  stand-alone `<TreeTable>` (columns: Account Code/Name/Beg/PTD DR/PTD CR/
+  YTD DR/YTD CR/Debit Bal/Credit Bal, treeColumnIndex=1 so only the Account
+  Name column indents). New types `HierarchicalTrialBalanceLine` /
+  `HierarchicalTrialBalanceResponse` in types/index.ts.
+- Cost Centre filter (already on this page) is reused for the hierarchical
+  view via the endpoint's `costCentreCode` param. The Product filter is
+  hidden in Hierarchical mode — the hierarchical endpoint's confirmed params
+  are only `legalEntityId/periodId/unitCode/costCentreCode`, no product.
+  The spec's Phase-2 "Unit" filter (dimension type `UNIT`) was **not**
+  built — no `UNIT` dimensionType is confirmed to exist anywhere else in
+  this codebase (only NATURAL_ACCOUNT/COST_CENTRE/PRODUCT are), and
+  CLAUDE.md's standing rule is not to guess backend dimension types.
+  `getHierarchicalTrialBalance` still accepts an optional `unitCode` param
+  for future wiring once a UNIT dimension is confirmed.
+- P&L Standard view (PLStatementPage.tsx): Revenue/Expenses sections now
+  render via `TreeRows` (embedded inside the existing per-page `<table>`,
+  not the stand-alone `<TreeTable>`) since the mockup's "Revenue"/
+  "Expenses" section header + "Total Revenue"/"Total Expenses" footer rows
+  are page-specific and predate this build — reusing the existing
+  `PLSection` wrapper kept that layout intact. Each section gets its own
+  `useTreeExpand` state plus its own small Expand All/Collapse All links
+  in the section header row (not one global pair). `PLItem` has no
+  `isSummary` field (confirmed absent from both the type and CLAUDE.md's
+  P&L API field list) — summary-ness is derived as `children.length > 0`.
+  The By-Segment view is unchanged (it's a segment pivot table, not a
+  parent/child hierarchy — out of scope per the build spec, which only
+  asked to update P&L's already-hierarchical rendering).
+- Balance Sheet (BalanceSheetPage.tsx): same `TreeRows`-inside-`BSSection`
+  approach as P&L, but `BalanceSheetItem` already has a real `isSummary`
+  field (unlike PLItem), so no derived fallback was needed there.
+- CSV exports updated per the build spec (item 8) to flatten the full tree
+  (all nodes including children) with added Depth + Is Summary columns:
+  Trial Balance's new `exportHierarchicalCsv`, P&L's existing
+  `exportStandardCsv` (previously only exported top-level revenue/expense
+  items, not children), and Balance Sheet's existing `exportCsv` (already
+  flattened children, gained the Depth/Is Summary columns). The By-Segment
+  P&L export and the Standard (flat) Trial Balance export were left as-is
+  — neither has a tree shape.
+- Qualifier badges (ASSET=blue/LIABILITY=amber/EQUITY=green/REVENUE=purple/
+  EXPENSE=red, same palette as Opening Balance Import) were added only to
+  the Trial Balance Hierarchical view's Account Name column, per the build
+  spec's explicit instruction under the Trial Balance section — P&L/BS
+  don't get per-row badges since their existing section grouping
+  (Revenue/Expenses, Assets/Liabilities/Equity) already conveys the same
+  information and the spec didn't ask for badges there.
+- Verified via `tsc -b` (clean), `oxlint` (no new warning classes — the one
+  new warning, `TreeTable.tsx`'s react/only-export-components for
+  exporting a hook alongside a component, already exists on
+  AuthContext.tsx/ToastContext.tsx for the same reason), `vite build`
+  (clean), and dev-server boot checks on `/trial-balance`, `/pl-statement`,
+  `/balance-sheet` (all → 200). No backend was running in this
+  environment, so the live Hierarchical View / expand-collapse / CSV round
+  trip against real API data was not exercised — same limitation noted on
+  every other screen built this way.
+
 ## Calendar Management Screen (September 2026)
 - Route: /calendar-management — Permission: gl:ledger:manage
 - Sidebar: Accounting Configuration — between Ledger Setup and Finance Dimensions

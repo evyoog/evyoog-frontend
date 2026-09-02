@@ -18,6 +18,7 @@ import type {
   CreateJournalRequest,
   DimensionValue,
   FinanceDimension,
+  HierarchicalTrialBalanceResponse,
   Journal,
   JournalCategory,
   JournalSource,
@@ -66,6 +67,19 @@ export async function getTrialBalance(
   if (product) params.product = product;
   const { data } = await api.get<ApiResponse<TrialBalanceReport>>(
     '/api/v1/gl/reports/trial-balance',
+    { params },
+  );
+  return data.data;
+}
+
+export async function getHierarchicalTrialBalance(params: {
+  legalEntityId: string;
+  periodId: string;
+  unitCode?: string;
+  costCentreCode?: string;
+}) {
+  const { data } = await api.get<ApiResponse<HierarchicalTrialBalanceResponse>>(
+    '/api/v1/gl/reports/hierarchical-trial-balance',
     { params },
   );
   return data.data;

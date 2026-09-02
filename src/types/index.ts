@@ -268,6 +268,41 @@ export interface TrialBalanceReport {
   segmentFilters?: { costCentre: string | null; product: string | null };
 }
 
+export interface HierarchicalTrialBalanceLine {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountQualifier: string;
+  normalBalance: string;
+  isSummary: boolean;
+  isPostable: boolean;
+  depth: number;
+  beginningBalance: number;
+  periodToDateDr: number;
+  periodToDateCr: number;
+  yearToDateDr: number;
+  yearToDateCr: number;
+  endingBalance: number;
+  debitBalance: number;
+  creditBalance: number;
+  children: HierarchicalTrialBalanceLine[];
+}
+
+export interface HierarchicalTrialBalanceResponse {
+  legalEntityId: string;
+  legalEntityName: string;
+  accountingPeriodId: string;
+  periodName: string;
+  fiscalYear: string;
+  generatedAt: string;
+  lines: HierarchicalTrialBalanceLine[];
+  totalDebit: number;
+  totalCredit: number;
+  isBalanced: boolean;
+  totalAccounts: number;
+  accountsWithActivity: number;
+}
+
 export type PeriodStatusValue = 'NOT_OPENED' | 'FUTURE_ENTERABLE' | 'OPEN' | 'CLOSED' | 'LOCKED';
 
 export interface PeriodStatus {

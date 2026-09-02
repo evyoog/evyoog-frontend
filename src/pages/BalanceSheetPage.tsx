@@ -3,12 +3,26 @@ import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
-import { ReportSkeleton, ErrorState, EmptyState } from '../components/ui';
+import { ReportSkeleton, ErrorState, EmptyState, TreeRows, useTreeExpand } from '../components/ui';
+import type { TreeTableColumn } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getBalanceSheet, getPeriodStatus } from '../api/gl';
 import type { BalanceSheetItem, BalanceSheetReport, PeriodStatus } from '../types';
 import { formatINR } from '../utils/format';
+
+const bsGetChildren = (item: BalanceSheetItem) => item.children ?? [];
+const bsGetId = (item: BalanceSheetItem) => item.accountId ?? item.accountCode;
+const bsIsSummary = (item: BalanceSheetItem) => item.isSummary;
+
+const BS_COLUMNS: TreeTableColumn<BalanceSheetItem>[] = [
+  {
+    header: 'Account Code',
+    render: (item) => <span className="font-mono text-navy">{item.accountCode}</span>,
+  },
+  { header: 'Account Name', render: (item) => item.accountName },
+  { header: 'Ending Balance', align: 'right', render: (item) => formatINR(item.endingBalance) },
+];
 
 // Normalise defensively — same approach as Trial Balance — in case the
 // backend shape drifts (missing arrays, isBalanced omitted, etc).
@@ -39,18 +53,28 @@ function normalizeReport(raw: unknown): BalanceSheetReport {
   };
 }
 
-function flatten(items: BalanceSheetItem[]): BalanceSheetItem[] {
-  return items.flatMap((item) => [item, ...flatten(item.children ?? [])]);
+function flatten(
+  items: BalanceSheetItem[],
+  depth = 0,
+): { item: BalanceSheetItem; depth: number }[] {
+  return items.flatMap((item) => [
+    { item, depth },
+    ...flatten(bsGetChildren(item), depth + 1),
+  ]);
 }
 
 function exportCsv(report: BalanceSheetReport) {
-  const header = ['Section', 'Account Code', 'Account Name', 'Ending Balance'];
-  const toRow = (section: string) => (item: BalanceSheetItem) => [
-    section,
-    item.accountCode,
-    item.accountName,
-    item.endingBalance,
-  ];
+  const header = ['Section', 'Account Code', 'Account Name', 'Depth', 'Is Summary', 'Ending Balance'];
+  const toRow =
+    (section: string) =>
+    ({ item, depth }: { item: BalanceSheetItem; depth: number }) => [
+      section,
+      item.accountCode,
+      item.accountName,
+      depth,
+      item.isSummary,
+      item.endingBalance,
+    ];
   const rows = [
     ...flatten(report.assetItems).map(toRow('Assets')),
     ...flatten(report.liabilityItems).map(toRow('Liabilities')),
@@ -67,20 +91,38 @@ function exportCsv(report: BalanceSheetReport) {
 }
 
 function BSSection({ title, items, total }: { title: string; items: BalanceSheetItem[]; total: number }) {
+  const expand = useTreeExpand({
+    nodes: items,
+    getChildren: bsGetChildren,
+    getId: bsGetId,
+    isSummary: bsIsSummary,
+  });
   return (
     <Fragment>
       <tr className="bg-offwhite">
         <td colSpan={3} className="py-2 pr-2 text-xs font-semibold uppercase tracking-wide text-navy">
-          {title}
+          <div className="flex items-center justify-between">
+            <span>{title}</span>
+            <span className="flex gap-3 text-[10px] normal-case tracking-normal text-blue">
+              <button type="button" onClick={expand.expandAll} className="underline">
+                Expand All
+              </button>
+              <button type="button" onClick={expand.collapseAll} className="underline">
+                Collapse All
+              </button>
+            </span>
+          </div>
         </td>
       </tr>
-      {items.map((item) => (
-        <tr key={item.accountId ?? item.accountCode} className="border-b border-border">
-          <td className="py-2 pr-2 font-mono text-navy">{item.accountCode}</td>
-          <td className="py-2 pr-2">{item.accountName}</td>
-          <td className="py-2 pr-2 text-right font-mono">{formatINR(item.endingBalance)}</td>
-        </tr>
-      ))}
+      <TreeRows
+        nodes={items}
+        columns={BS_COLUMNS}
+        getChildren={bsGetChildren}
+        getId={bsGetId}
+        isSummary={bsIsSummary}
+        expand={expand}
+        treeColumnIndex={1}
+      />
       <tr className="border-b border-border font-medium">
         <td className="py-2 pr-2" colSpan={2}>
           Total {title}

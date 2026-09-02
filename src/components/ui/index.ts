@@ -9,3 +9,5 @@ export { default as LoadingSpinner } from './LoadingSpinner';
 export { default as Modal } from './Modal';
 export { default as Select } from './Select';
 export { default as ToastContainer } from './Toast';
+export { default as TreeTable, TreeRows, useTreeExpand } from './TreeTable';
+export type { TreeTableColumn, TreeTableProps, TreeRowsProps, TreeExpandState } from './TreeTable';
