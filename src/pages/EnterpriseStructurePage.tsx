@@ -35,8 +35,6 @@ import type {
 } from '../types';
 import { formatDate } from '../utils/format';
 
-const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
-
 const ACCOUNTING_STANDARDS = ['IND_AS', 'IGAAP', 'IFRS', 'US_GAAP'];
 const LEDGER_CATEGORIES = ['PRIMARY', 'SECONDARY', 'REPORTING', 'ENCUMBRANCE'];
 
@@ -294,9 +292,11 @@ interface AddLEForm {
 const EMPTY_LE_FORM: AddLEForm = { code: '', name: '', accountingStandard: 'IND_AS', tan: '' };
 
 function AddLegalEntityModal({
+  businessGroupId,
   onClose,
   onCreated,
 }: {
+  businessGroupId: string;
   onClose: () => void;
   onCreated: (le: LegalEntity) => void;
 }) {
@@ -321,7 +321,7 @@ function AddLegalEntityModal({
     setSaving(true);
     try {
       const created = await createLegalEntity({
-        businessGroupId: BUSINESS_GROUP_ID,
+        businessGroupId,
         code: form.code.trim().toUpperCase(),
         name: form.name.trim(),
         accountingStandard: form.accountingStandard,
@@ -563,10 +563,15 @@ export default function EnterpriseStructurePage() {
   const selectedLE = legalEntities.find((le) => le.id === selectedLEId) ?? null;
 
   async function loadLegalEntities(preferredId?: string) {
+    if (!user?.businessGroupId) {
+      setErrorLEs(true);
+      setLoadingLEs(false);
+      return;
+    }
     setLoadingLEs(true);
     setErrorLEs(false);
     try {
-      const data = await listLegalEntities(BUSINESS_GROUP_ID);
+      const data = await listLegalEntities(user.businessGroupId);
       setLegalEntities(data);
       setSelectedLEId((current) => {
         const wanted = preferredId ?? current ?? user?.legalEntityId ?? null;
@@ -1179,8 +1184,9 @@ export default function EnterpriseStructurePage() {
         />
       )}
 
-      {showAddLEModal && (
+      {showAddLEModal && user?.businessGroupId && (
         <AddLegalEntityModal
+          businessGroupId={user.businessGroupId}
           onClose={() => setShowAddLEModal(false)}
           onCreated={(created) => loadLegalEntities(created.id)}
         />

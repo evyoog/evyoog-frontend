@@ -10,6 +10,7 @@ export interface User {
   email: string;
   fullName: string;
   legalEntityId: string;
+  businessGroupId?: string;
   permissions: string[];
   mustChangePwd: boolean;
 }

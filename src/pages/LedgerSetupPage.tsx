@@ -22,8 +22,6 @@ import type { Ledger, AccountingCalendar, LegalEntityLedger, CoaStructure } from
 import { formatDate } from '../utils/format';
 import { buildCombinationPreview } from '../utils/coaStructure';
 
-const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
-
 const FINANCE_MODE_OPTIONS = [
   { value: 'THICK', description: 'Full GL posting with account balances (recommended)' },
   { value: 'THIN', description: 'Summary posting only' },
@@ -941,13 +939,18 @@ export default function LedgerSetupPage() {
 
   async function loadAll() {
     if (!user) return;
+    if (!user.businessGroupId) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(false);
     try {
       const [ledgerList, coaList, leList] = await Promise.all([
         listLedgers(user.legalEntityId),
-        listCoaStructures(BUSINESS_GROUP_ID),
-        listLegalEntities(BUSINESS_GROUP_ID),
+        listCoaStructures(user.businessGroupId),
+        listLegalEntities(user.businessGroupId),
       ]);
       setLedgers(ledgerList);
       setCoaStructures(coaList);

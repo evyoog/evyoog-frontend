@@ -22,8 +22,6 @@ import {
   dimensionTypeLabel,
 } from '../utils/coaStructure';
 
-const BUSINESS_GROUP_ID = 'c1338b23-c1e6-4f4e-9d87-8e60b49bb432';
-
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
@@ -212,10 +210,15 @@ export default function CoaStructurePage() {
   const [editingStructure, setEditingStructure] = useState<CoaStructure | null>(null);
 
   async function loadStructures() {
+    if (!user?.businessGroupId) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(false);
     try {
-      const data = await listCoaStructures(BUSINESS_GROUP_ID);
+      const data = await listCoaStructures(user.businessGroupId);
       const list = Array.isArray(data) ? data : [];
       setStructures(list);
       const entries = await Promise.all(
@@ -245,7 +248,7 @@ export default function CoaStructurePage() {
   useEffect(() => {
     loadStructures();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   const totalStructures = structures.length;
   const activeStructures = structures.filter((s) => s.isActive).length;
@@ -320,11 +323,15 @@ export default function CoaStructurePage() {
 
   const handleCreate = async () => {
     if (!validateAdd()) return;
+    if (!user?.businessGroupId) {
+      setAddSubmitError('Missing business group context. Please log in again.');
+      return;
+    }
     setSaving(true);
     setAddSubmitError(null);
     try {
       await createCoaStructure({
-        businessGroupId: BUSINESS_GROUP_ID,
+        businessGroupId: user.businessGroupId,
         code: addForm.code.trim().toUpperCase(),
         name: addForm.name.trim(),
         description: addForm.description.trim() || undefined,

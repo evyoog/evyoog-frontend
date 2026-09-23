@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import * as authApi from '../api/auth';
+import { getLegalEntity } from '../api/gl';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -35,11 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const loginData = await authApi.login(email, password);
     localStorage.setItem('accessToken', loginData.accessToken);
     localStorage.setItem('refreshToken', loginData.refreshToken);
+    let businessGroupId: string | undefined;
+    try {
+      const legalEntity = await getLegalEntity(loginData.legalEntityId);
+      businessGroupId = legalEntity.businessGroupId;
+    } catch {
+      businessGroupId = undefined;
+    }
     const userData: User = {
       userId: loginData.userId,
       email: loginData.email,
       fullName: loginData.fullName,
       legalEntityId: loginData.legalEntityId,
+      businessGroupId,
       permissions: loginData.permissions,
       mustChangePwd: loginData.mustChangePwd,
     };
