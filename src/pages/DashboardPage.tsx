@@ -98,16 +98,17 @@ function KPICard({
   );
 }
 
-function ExpenseBar({ name, amount, total }: { name: string; amount: number; total: number }) {
-  const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+function ExpenseBar({ name, amount, total, max }: { name: string; amount: number; total: number; max: number }) {
+  const barPct = max > 0 ? Math.min(Math.round((amount / max) * 100), 100) : 0;
+  const totalPct = total > 0 ? Math.round((amount / total) * 100) : 0;
   return (
     <div className="flex items-center gap-3 py-2">
       <div className="w-40 truncate text-sm text-navy">{name}</div>
       <div className="h-2 flex-1 rounded-full bg-offwhite">
-        <div className="h-2 rounded-full bg-amber" style={{ width: `${pct}%` }} />
+        <div className="h-2 rounded-full bg-amber" style={{ width: `${barPct}%` }} />
       </div>
       <div className="w-28 text-right font-mono text-sm text-navy">{formatINR(amount)}</div>
-      <div className="w-10 text-right text-xs text-slate">{pct}%</div>
+      <div className="w-10 text-right text-xs text-slate">{totalPct}%</div>
     </div>
   );
 }
@@ -316,14 +317,18 @@ export default function DashboardPage() {
                   <h2 className="mb-2 text-lg font-semibold text-navy">
                     Expense Breakdown — {kpis.periodName}
                   </h2>
-                  {kpis.topExpenses.map((row) => (
-                    <ExpenseBar
-                      key={row.accountCode}
-                      name={row.accountName}
-                      amount={row.periodToDateDr - row.periodToDateCr}
-                      total={kpis.expenses}
-                    />
-                  ))}
+                  {(() => {
+                    const maxExp = Math.max(...kpis.topExpenses.map(r => Math.abs(r.periodToDateDr - r.periodToDateCr)));
+                    return kpis.topExpenses.map((row) => (
+                      <ExpenseBar
+                        key={row.accountCode}
+                        name={row.accountName}
+                        amount={row.periodToDateDr - row.periodToDateCr}
+                        total={kpis.expenses}
+                        max={maxExp}
+                      />
+                    ));
+                  })()}
                 </Card>
               )}
 
