@@ -1012,11 +1012,14 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   available option and re-picks a valid default if the previously selected
   type disappears from a refreshed list.
 - The build ask named a `getLedgersForLegalEntity` API function that does
-  not exist in gl.ts (only `listLedgers(legalEntityId?)` does, and it's
-  the function every other page already uses for this exact
-  legalEntityId→ledger lookup — see JournalEntryPage, AieImportPage,
-  TrialBalancePage, etc.). Used `listLedgers` instead of adding a
-  duplicate/guessed function name.
+  not exist in gl.ts. First pass used `listLedgers(legalEntityId)[0]`, but
+  that did not reliably scope to the legal entity (returned Orbinox's
+  PRIM-01 for a Unicon user). Now uses `listLegalEntityLedgers(legalEntityId)`
+  (the LE↔ledger link list): active links only, prefers
+  `ledgerCategory === 'PRIMARY'`, falls back to the first active link, and
+  uses that link's `ledgerId`. NOTE: other pages (JournalEntryPage,
+  AieImportPage, TrialBalancePage, DimensionValuesPage, etc.) still use
+  `listLedgers(legalEntityId)[0]` and may have the same multi-tenant bug.
 - `getPLBySegment`'s `segmentType` param widened from the literal union
   `'COST_CENTRE' | 'PRODUCT'` to `string`, since segment types are now
   ledger-driven and not a fixed set.

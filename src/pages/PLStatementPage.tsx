@@ -7,7 +7,13 @@ import { ReportSkeleton, ErrorState, EmptyState, TreeRows, useTreeExpand } from 
 import type { TreeTableColumn } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getProfitAndLoss, getPLBySegment, getPeriodStatus, listLedgers, listFinanceDimensions } from '../api/gl';
+import {
+  getProfitAndLoss,
+  getPLBySegment,
+  getPeriodStatus,
+  listLegalEntityLedgers,
+  listFinanceDimensions,
+} from '../api/gl';
 import type {
   PeriodStatus,
   PLItem,
@@ -361,11 +367,12 @@ export default function PLStatementPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listLedgers(user.legalEntityId)
-      .then((ledgers) => {
-        const ledgerId = ledgers[0]?.id;
-        if (!ledgerId) return [];
-        return listFinanceDimensions(ledgerId);
+    listLegalEntityLedgers(user.legalEntityId)
+      .then((links) => {
+        const active = links.filter((l) => l.isActive);
+        const link = active.find((l) => l.ledgerCategory === 'PRIMARY') ?? active[0];
+        if (!link) return [];
+        return listFinanceDimensions(link.ledgerId);
       })
       .then((dims) => {
         if (cancelled || !dims) return;
