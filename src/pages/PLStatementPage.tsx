@@ -7,7 +7,7 @@ import { ReportSkeleton, ErrorState, EmptyState, TreeRows, useTreeExpand } from 
 import type { TreeTableColumn } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getProfitAndLoss, getPLBySegment, getPeriodStatus } from '../api/gl';
+import { getProfitAndLoss, getPLBySegment, getPeriodStatus, listLedgers, listFinanceDimensions } from '../api/gl';
 import type {
   PeriodStatus,
   PLItem,
@@ -34,12 +34,11 @@ const PL_COLUMNS: TreeTableColumn<PLItem>[] = [
 ];
 
 type ViewMode = 'standard' | 'by-segment';
-type SegmentType = 'COST_CENTRE' | 'PRODUCT';
 
-const SEGMENT_TYPES: { value: SegmentType; label: string }[] = [
-  { value: 'COST_CENTRE', label: 'Cost Centre' },
-  { value: 'PRODUCT', label: 'Product' },
-];
+interface SegmentOption {
+  value: string;
+  label: string;
+}
 
 function cell(amount: number) {
   return amount === 0 ? '—' : formatINR(amount);
@@ -330,7 +329,8 @@ export default function PLStatementPage() {
   const [periods, setPeriods] = useState<PeriodStatus[]>([]);
   const [periodId, setPeriodId] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('standard');
-  const [segmentType, setSegmentType] = useState<SegmentType>('COST_CENTRE');
+  const [segmentOptions, setSegmentOptions] = useState<SegmentOption[]>([]);
+  const [segmentType, setSegmentType] = useState('');
   const [standardReport, setStandardReport] = useState<PLStatementReport | null>(null);
   const [segmentReport, setSegmentReport] = useState<PLBySegmentReport | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState(true);
@@ -358,6 +358,31 @@ export default function PLStatementPage() {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    listLedgers(user.legalEntityId)
+      .then((ledgers) => {
+        const ledgerId = ledgers[0]?.id;
+        if (!ledgerId) return [];
+        return listFinanceDimensions(ledgerId);
+      })
+      .then((dims) => {
+        if (cancelled || !dims) return;
+        const options = dims
+          .filter((d) => d.dimensionType !== 'NATURAL_ACCOUNT')
+          .map((d) => ({ value: d.dimensionType, label: d.name }));
+        setSegmentOptions(options);
+        setSegmentType((prev) => (options.some((o) => o.value === prev) ? prev : (options[0]?.value ?? '')));
+      })
+      .catch(() => {
+        if (!cancelled) showToast('Failed to load segment dimensions.', 'error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     setStandardReport(null);
@@ -367,6 +392,7 @@ export default function PLStatementPage() {
 
   const handleRunReport = async () => {
     if (!user || !periodId) return;
+    if (viewMode === 'by-segment' && !segmentType) return;
     setRunning(true);
     setError(false);
     try {
@@ -403,7 +429,9 @@ export default function PLStatementPage() {
       <p className="mt-1 text-sm text-slate">
         {viewMode === 'standard'
           ? 'Period-to-date and year-to-date profit and loss'
-          : `Profit and loss breakdown by ${segmentType === 'COST_CENTRE' ? 'Cost Centre' : 'Product'}`}
+          : `Profit and loss breakdown by ${
+              segmentOptions.find((o) => o.value === segmentType)?.label ?? 'Segment'
+            }`}
       </p>
 
       <Card className="mt-6">
@@ -460,9 +488,9 @@ export default function PLStatementPage() {
                 label="Segment Type"
                 aria-label="Select segment type"
                 value={segmentType}
-                onChange={(e) => setSegmentType(e.target.value as SegmentType)}
+                onChange={(e) => setSegmentType(e.target.value)}
               >
-                {SEGMENT_TYPES.map((s) => (
+                {segmentOptions.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
@@ -474,7 +502,7 @@ export default function PLStatementPage() {
           <Button
             onClick={handleRunReport}
             loading={running}
-            disabled={running || !periodId}
+            disabled={running || !periodId || (viewMode === 'by-segment' && !segmentType)}
             aria-busy={running}
             aria-label="Run report for selected period"
           >

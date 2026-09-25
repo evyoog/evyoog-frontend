@@ -1000,6 +1000,31 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
 - Reused: createCalendar, updateCalendar, listAccountingPeriods,
   generateNextYearPeriods from existing gl.ts (not duplicated)
 
+## P&L By-Segment — Dynamic Dimensions (September 2026)
+- PLStatementPage.tsx's By-Segment view no longer hardcodes
+  COST_CENTRE/PRODUCT as the only segment options (was wrong for
+  multi-tenant — e.g. Unicon has PROFIT_CENTRE/COST_CENTRE/PROJECT, not
+  Orbinox's dimensions). `SegmentType`/`SEGMENT_TYPES` were removed;
+  segment options are now built at runtime in a new effect:
+  `listLedgers(user.legalEntityId)[0].id` → `listFinanceDimensions(ledgerId)`,
+  filtered to exclude `NATURAL_ACCOUNT`, mapped to
+  `{ value: dimensionType, label: dimension.name }`. Defaults to the first
+  available option and re-picks a valid default if the previously selected
+  type disappears from a refreshed list.
+- The build ask named a `getLedgersForLegalEntity` API function that does
+  not exist in gl.ts (only `listLedgers(legalEntityId?)` does, and it's
+  the function every other page already uses for this exact
+  legalEntityId→ledger lookup — see JournalEntryPage, AieImportPage,
+  TrialBalancePage, etc.). Used `listLedgers` instead of adding a
+  duplicate/guessed function name.
+- `getPLBySegment`'s `segmentType` param widened from the literal union
+  `'COST_CENTRE' | 'PRODUCT'` to `string`, since segment types are now
+  ledger-driven and not a fixed set.
+- If a ledger has no dimensions besides NATURAL_ACCOUNT,
+  `segmentOptions` is empty and Run Report is disabled in By-Segment mode
+  (fail-soft, no page-level error) — no other UI change requested for
+  that edge case.
+
 ## Hierarchical Financial Reporting (September 2026)
 - New: src/components/ui/TreeTable.tsx
   Exports: useTreeExpand (hook), TreeRows (embeddable rows), TreeTable (full component)

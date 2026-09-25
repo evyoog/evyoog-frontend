@@ -88,7 +88,7 @@ export async function getHierarchicalTrialBalance(params: {
 export async function getPLBySegment(
   legalEntityId: string,
   periodId: string,
-  segmentType: 'COST_CENTRE' | 'PRODUCT',
+  segmentType: string,
   includeZeroBalances?: boolean,
 ) {
   const { data } = await api.get<ApiResponse<PLBySegmentReport>>(
