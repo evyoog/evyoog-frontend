@@ -7,7 +7,7 @@ import Select from '../components/ui/Select';
 import { CardSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { listLedgers, getPeriodStatus, downloadAieTemplate, importAieExcel } from '../api/gl';
+import { getPrimaryLedger, getPeriodStatus, downloadAieTemplate, importAieExcel } from '../api/gl';
 import type { AieImportResponse, Ledger, PeriodStatus } from '../types';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -53,11 +53,11 @@ export default function AieImportPage() {
     setLoadingLookups(true);
     setLookupError(false);
     try {
-      const [ledgers, periods] = await Promise.all([
-        listLedgers(user.legalEntityId),
+      const [primaryLedger, periods] = await Promise.all([
+        getPrimaryLedger(user.legalEntityId),
         getPeriodStatus(user.legalEntityId),
       ]);
-      setLedger(ledgers[0] ?? null);
+      setLedger(primaryLedger);
       setOpenPeriods(periods.filter((p) => p.status === 'OPEN'));
     } catch {
       setLookupError(true);

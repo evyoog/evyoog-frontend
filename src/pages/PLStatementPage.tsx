@@ -11,7 +11,7 @@ import {
   getProfitAndLoss,
   getPLBySegment,
   getPeriodStatus,
-  listLegalEntityLedgers,
+  getPrimaryLedgerId,
   listFinanceDimensions,
 } from '../api/gl';
 import type {
@@ -367,13 +367,8 @@ export default function PLStatementPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listLegalEntityLedgers(user.legalEntityId)
-      .then((links) => {
-        const active = links.filter((l) => l.isActive);
-        const link = active.find((l) => l.ledgerCategory === 'PRIMARY') ?? active[0];
-        if (!link) return [];
-        return listFinanceDimensions(link.ledgerId);
-      })
+    getPrimaryLedgerId(user.legalEntityId)
+      .then((ledgerId) => (ledgerId ? listFinanceDimensions(ledgerId) : []))
       .then((dims) => {
         if (cancelled || !dims) return;
         const options = dims

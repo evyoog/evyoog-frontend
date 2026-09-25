@@ -1017,9 +1017,23 @@ Report fields: openingBalance, totalDebits, totalCredits, closingBalance, entryC
   PRIM-01 for a Unicon user). Now uses `listLegalEntityLedgers(legalEntityId)`
   (the LE↔ledger link list): active links only, prefers
   `ledgerCategory === 'PRIMARY'`, falls back to the first active link, and
-  uses that link's `ledgerId`. NOTE: other pages (JournalEntryPage,
-  AieImportPage, TrialBalancePage, DimensionValuesPage, etc.) still use
-  `listLedgers(legalEntityId)[0]` and may have the same multi-tenant bug.
+  uses that link's `ledgerId`. This logic now lives in two shared gl.ts
+  helpers: `getPrimaryLedgerId(legalEntityId)` (id only) and
+  `getPrimaryLedger(legalEntityId)` (full `Ledger`, resolved by finding that
+  id in the unscoped `listLedgers()` list — chosen over `getLedger(id)`
+  because the latter has never been exercised against the live backend).
+- Multi-tenant ledger fix (September 2026): `listLedgers(legalEntityId)[0]`
+  returned the wrong ledger for Unicon users (Orbinox's PRIM-01 came
+  first). Replaced with the helpers above on PLStatement, DimensionValues,
+  JournalEntry, AieImport, TrialBalance, FinanceDimensions, PeriodManagement,
+  AccountCombinations, OpeningBalanceImport, ChartOfAccounts, AccountLedger,
+  and EnterpriseStructure's Tab 2 loader. NOT changed (deliberately):
+  LedgerSetupPage's `listLedgers(user.legalEntityId)` (loads a list of
+  ledger cards, not `[0]` — may still show other tenants' ledgers if the
+  backend ignores the param), CalendarManagementPage's and
+  EnterpriseStructurePage's `listLedgers()` (intentional system-wide
+  pickers). Rule: never use `listLedgers(legalEntityId)[0]` for "the
+  legal entity's ledger" — use `getPrimaryLedger*`.
 - `getPLBySegment`'s `segmentType` param widened from the literal union
   `'COST_CENTRE' | 'PRODUCT'` to `string`, since segment types are now
   ledger-driven and not a fixed set.

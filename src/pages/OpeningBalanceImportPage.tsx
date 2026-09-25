@@ -8,7 +8,7 @@ import { CardSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
-  listLedgers,
+  getPrimaryLedger,
   getPeriodStatus,
   downloadObTemplate,
   previewOpeningBalances,
@@ -68,11 +68,11 @@ export default function OpeningBalanceImportPage() {
     setLoadingLookups(true);
     setLookupError(false);
     try {
-      const [ledgers, periods] = await Promise.all([
-        listLedgers(user.legalEntityId),
+      const [primaryLedger, periods] = await Promise.all([
+        getPrimaryLedger(user.legalEntityId),
         getPeriodStatus(user.legalEntityId),
       ]);
-      setLedger(ledgers[0] ?? null);
+      setLedger(primaryLedger);
       setOpenPeriods(periods.filter((p) => p.status === 'OPEN'));
     } catch {
       setLookupError(true);

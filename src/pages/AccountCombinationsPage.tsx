@@ -15,7 +15,7 @@ import {
   listAccountCombinations,
   listDimensionValues,
   listFinanceDimensions,
-  listLedgers,
+  getPrimaryLedger,
   toggleDynamicInsert,
   updateAccountCombination,
 } from '../api/gl';
@@ -177,10 +177,9 @@ export default function AccountCombinationsPage() {
     if (!user) return;
     let cancelled = false;
     setLegalEntityId(user.legalEntityId);
-    listLedgers(user.legalEntityId)
-      .then((ledgers) => {
+    getPrimaryLedger(user.legalEntityId)
+      .then((led) => {
         if (cancelled) return;
-        const led = ledgers[0] ?? null;
         setLedger(led);
         if (led) {
           loadDimensionsAndValues(led.id);

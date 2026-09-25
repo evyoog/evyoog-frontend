@@ -11,7 +11,7 @@ import {
   getTrialBalance,
   getHierarchicalTrialBalance,
   getPeriodStatus,
-  listLedgers,
+  getPrimaryLedgerId,
   listFinanceDimensions,
   listDimensionValues,
 } from '../api/gl';
@@ -235,9 +235,8 @@ export default function TrialBalancePage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listLedgers(user.legalEntityId)
-      .then(async (ledgers) => {
-        const ledgerId = ledgers[0]?.id;
+    getPrimaryLedgerId(user.legalEntityId)
+      .then(async (ledgerId) => {
         if (!ledgerId) return;
         const dims = await listFinanceDimensions(ledgerId);
         if (cancelled) return;

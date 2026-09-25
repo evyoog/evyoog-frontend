@@ -12,7 +12,7 @@ import { useToast } from '../context/ToastContext';
 import {
   createFinanceDimension,
   listFinanceDimensions,
-  listLedgers,
+  getPrimaryLedgerId,
   updateFinanceDimension,
 } from '../api/gl';
 import type { FinanceDimension } from '../types';
@@ -122,10 +122,9 @@ export default function FinanceDimensionsPage() {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    listLedgers(user.legalEntityId)
-      .then((ledgers) => {
+    getPrimaryLedgerId(user.legalEntityId)
+      .then((lid) => {
         if (cancelled) return;
-        const lid = ledgers[0]?.id ?? null;
         setLedgerId(lid);
         if (lid) load(lid);
         else setLoading(false);

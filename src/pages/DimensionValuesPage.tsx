@@ -14,7 +14,7 @@ import {
   deactivateDimensionValue,
   getCoaStructureByLedger,
   listDimensionValues,
-  listLedgers,
+  getPrimaryLedgerId,
   setDimensionValueDefault,
   updateDimensionValue,
 } from '../api/gl';
@@ -199,8 +199,7 @@ export default function DimensionValuesPage() {
     setLoading(true);
     setError(false);
     try {
-      const ledgers = await listLedgers(user.legalEntityId);
-      const ledgerId = ledgers[0]?.id;
+      const ledgerId = await getPrimaryLedgerId(user.legalEntityId);
       if (!ledgerId) {
         setCoaStructure(null);
         setLoading(false);

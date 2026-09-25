@@ -402,6 +402,20 @@ export async function listLegalEntityLedgers(legalEntityId: string) {
   return data.data;
 }
 
+export async function getPrimaryLedgerId(legalEntityId: string): Promise<string | null> {
+  const links = await listLegalEntityLedgers(legalEntityId);
+  const active = links.filter((l) => l.isActive);
+  const primary = active.find((l) => l.ledgerCategory === 'PRIMARY') ?? active[0];
+  return primary?.ledgerId ?? null;
+}
+
+export async function getPrimaryLedger(legalEntityId: string): Promise<Ledger | null> {
+  const ledgerId = await getPrimaryLedgerId(legalEntityId);
+  if (!ledgerId) return null;
+  const ledgers = await listLedgers();
+  return ledgers.find((l) => l.id === ledgerId) ?? null;
+}
+
 export async function updateCalendar(
   calendarId: string,
   body: { name: string; description?: string },

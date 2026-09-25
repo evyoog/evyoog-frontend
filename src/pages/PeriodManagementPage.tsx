@@ -12,7 +12,7 @@ import {
   getPeriodStatus,
   initialisePeriod,
   listAccountingPeriods,
-  listLedgers,
+  getPrimaryLedger,
   lockPeriod,
   openPeriod,
 } from '../api/gl';
@@ -168,8 +168,7 @@ export default function PeriodManagementPage() {
     setLoading(true);
     setError(false);
     try {
-      const ledgers = await listLedgers(user.legalEntityId);
-      const primaryLedger = ledgers[0] ?? null;
+      const primaryLedger = await getPrimaryLedger(user.legalEntityId);
       setLedger(primaryLedger);
       if (!primaryLedger) {
         setCalendar(null);

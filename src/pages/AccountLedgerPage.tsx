@@ -6,7 +6,7 @@ import Select from '../components/ui/Select';
 import { TableSkeleton, ErrorState, EmptyState } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { getAccountLedger, getPeriodStatus, listChartOfAccounts, listLedgers } from '../api/gl';
+import { getAccountLedger, getPeriodStatus, listChartOfAccounts, getPrimaryLedgerId } from '../api/gl';
 import type { AccountLedgerReport, ChartOfAccount, PeriodStatus } from '../types';
 import { formatINR, formatDate, formatIST } from '../utils/format';
 
@@ -48,16 +48,15 @@ export default function AccountLedgerPage() {
 
     async function loadOptions() {
       try {
-        const [periodData, ledgers] = await Promise.all([
+        const [periodData, ledgerId] = await Promise.all([
           getPeriodStatus(user!.legalEntityId),
-          listLedgers(user!.legalEntityId),
+          getPrimaryLedgerId(user!.legalEntityId),
         ]);
         if (cancelled) return;
         setPeriods(periodData);
         const open = periodData.find((p) => p.status === 'OPEN');
         if (open) setPeriodId(open.accountingPeriodId);
 
-        const ledgerId = ledgers[0]?.id;
         if (ledgerId) {
           const accountList = await listChartOfAccounts(user!.legalEntityId, ledgerId);
           if (cancelled) return;

@@ -18,7 +18,7 @@ import {
   listFinanceDimensions,
   listJournalCategories,
   listJournalSources,
-  listLedgers,
+  getPrimaryLedger,
 } from '../api/gl';
 import type {
   ChartOfAccount,
@@ -193,10 +193,10 @@ export default function JournalEntryPage() {
     Promise.all([
       listJournalSources(),
       listJournalCategories(),
-      listLedgers(user.legalEntityId),
+      getPrimaryLedger(user.legalEntityId),
       getPeriodStatus(user.legalEntityId),
     ])
-      .then(async ([sourceList, categoryList, ledgers, periods]) => {
+      .then(async ([sourceList, categoryList, ledger, periods]) => {
         if (cancelled) return;
         setSources(sourceList);
         setCategories(categoryList);
@@ -207,7 +207,6 @@ export default function JournalEntryPage() {
         const range = open ? periodDateRange(open.periodName) : null;
         if (range) setGlDate(range.start);
 
-        const ledger = ledgers[0];
         if (ledger) {
           const [accountList, dims] = await Promise.all([
             listChartOfAccounts(user.legalEntityId, ledger.id),

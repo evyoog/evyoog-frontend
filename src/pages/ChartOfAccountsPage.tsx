@@ -12,7 +12,7 @@ import {
   createAccount,
   getChartOfAccounts,
   importChartOfAccounts,
-  listLedgers,
+  getPrimaryLedgerId,
   searchChartOfAccounts,
   updateAccount,
 } from '../api/gl';
@@ -163,10 +163,9 @@ export default function ChartOfAccountsPage() {
     if (!user) return;
     let cancelled = false;
     setLegalEntityId(user.legalEntityId);
-    listLedgers(user.legalEntityId)
-      .then((ledgers) => {
+    getPrimaryLedgerId(user.legalEntityId)
+      .then((lid) => {
         if (cancelled) return;
-        const lid = ledgers[0]?.id ?? null;
         setLedgerId(lid);
         if (lid) load(user.legalEntityId, lid);
         else setLoading(false);

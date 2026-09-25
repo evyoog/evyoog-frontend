@@ -19,6 +19,7 @@ import {
   listAccountingPeriods,
   listBusinessUnits,
   listLedgers,
+  getPrimaryLedger,
   listLegalEntities,
   listLegalEntityLedgers,
   updateBusinessUnit,
@@ -597,8 +598,7 @@ export default function EnterpriseStructurePage() {
     setCalendar(null);
     setPeriodRows([]);
     try {
-      const ledgers = await listLedgers(legalEntityId);
-      const primary = ledgers[0] ?? null;
+      const primary = await getPrimaryLedger(legalEntityId);
       setLedger(primary);
       if (!primary) return;
 
