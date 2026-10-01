@@ -28,7 +28,11 @@ export default function Modal({
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
-    dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+    // Focus first input/select/textarea — not buttons (close button is first focusable element)
+    const firstInput = dialog?.querySelector<HTMLElement>(
+      'input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+    );
+    (firstInput ?? dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR))?.focus();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
