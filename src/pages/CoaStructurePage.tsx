@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import AppLayout from '../components/layout/AppLayout';
 import Card from '../components/ui/Card';
@@ -191,75 +191,20 @@ const EMPTY_ADD_FORM: AddFormState = {
   segments: [NATURAL_ACCOUNT_ROW],
 };
 
-export default function CoaStructurePage() {
-  const { user, hasPermission } = useAuth();
+function AddCoaStructureModal({
+  businessGroupId,
+  onClose,
+  onSaved,
+}: {
+  businessGroupId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { showToast } = useToast();
-  const canManage = hasPermission('gl:ledger:manage');
-
-  const [structures, setStructures] = useState<CoaStructure[]>([]);
-  const [formats, setFormats] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState<AddFormState>(EMPTY_ADD_FORM);
   const [addErrors, setAddErrors] = useState<Record<string, string>>({});
   const [addSubmitError, setAddSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const [editingStructure, setEditingStructure] = useState<CoaStructure | null>(null);
-
-  async function loadStructures() {
-    if (!user?.businessGroupId) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(false);
-    try {
-      const data = await listCoaStructures(user.businessGroupId);
-      const list = Array.isArray(data) ? data : [];
-      setStructures(list);
-      const entries = await Promise.all(
-        list.map(async (s) => {
-          try {
-            return [s.id, await getCoaCombinationFormat(s.id)] as const;
-          } catch {
-            return [
-              s.id,
-              buildCombinationPreview(
-                [...s.segments].sort((a, b) => a.segmentNumber - b.segmentNumber).map((seg) => seg.code),
-                s.separator,
-              ),
-            ] as const;
-          }
-        }),
-      );
-      setFormats(Object.fromEntries(entries));
-    } catch {
-      setError(true);
-      showToast('Failed to load COA Structures.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadStructures();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const totalStructures = structures.length;
-  const activeStructures = structures.filter((s) => s.isActive).length;
-  const totalLedgersUsing = structures.reduce((sum, s) => sum + s.assignedLedgerCount, 0);
-
-  const openAdd = () => {
-    setAddForm(EMPTY_ADD_FORM);
-    setAddErrors({});
-    setAddSubmitError(null);
-    setShowAddModal(true);
-  };
 
   const usedOptionalTypes = addForm.segments
     .filter((s) => !s.locked)
@@ -323,15 +268,11 @@ export default function CoaStructurePage() {
 
   const handleCreate = async () => {
     if (!validateAdd()) return;
-    if (!user?.businessGroupId) {
-      setAddSubmitError('Missing business group context. Please log in again.');
-      return;
-    }
     setSaving(true);
     setAddSubmitError(null);
     try {
       await createCoaStructure({
-        businessGroupId: user.businessGroupId,
+        businessGroupId,
         code: addForm.code.trim().toUpperCase(),
         name: addForm.name.trim(),
         description: addForm.description.trim() || undefined,
@@ -345,8 +286,7 @@ export default function CoaStructurePage() {
         })),
       });
       showToast('COA Structure created successfully.', 'success');
-      setShowAddModal(false);
-      await loadStructures();
+      onSaved();
     } catch (err) {
       const message = axios.isAxiosError(err)
         ? (err.response?.data as { message?: string } | undefined)?.message
@@ -355,6 +295,219 @@ export default function CoaStructurePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  return (
+    <Modal
+      title="Add COA Structure"
+      onClose={onClose}
+      widthClassName="max-w-2xl"
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={handleCreate} loading={saving}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            id="coa-code"
+            label="Code"
+            required
+            value={addForm.code}
+            onChange={(e) => setAddForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+            error={addErrors.code}
+            placeholder="e.g. STD-IND-SVC"
+          />
+          <Input
+            id="coa-name"
+            label="Name"
+            required
+            value={addForm.name}
+            onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+            error={addErrors.name}
+          />
+          <div className="col-span-2">
+            <label htmlFor="coa-description" className="text-xs font-medium uppercase tracking-wide text-slate">
+              Description
+            </label>
+            <textarea
+              id="coa-description"
+              value={addForm.description}
+              onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-[#1E293B] outline-none focus:border-blue focus:ring-1 focus:ring-blue"
+            />
+          </div>
+          <Input id="coa-separator" label="Separator" value="." disabled />
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate">Segments</p>
+          <div className="mt-2 flex flex-col gap-2">
+            {addForm.segments.map((seg, index) => {
+              const options = OPTIONAL_DIMENSION_TYPES.filter(
+                (t) => t === seg.dimensionType || !usedOptionalTypes.includes(t),
+              );
+              return (
+                <div
+                  key={index}
+                  className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-offwhite px-3 py-2"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
+                    {index + 1}
+                  </span>
+                  {seg.locked ? (
+                    <span className="flex-1 text-sm font-medium text-navy">
+                      Natural Account (locked)
+                    </span>
+                  ) : (
+                    <Select
+                      aria-label={`Segment ${index + 1} dimension type`}
+                      className="flex-1"
+                      value={seg.dimensionType}
+                      onChange={(e) => handleSegmentTypeChange(index, e.target.value)}
+                    >
+                      {options.map((t) => (
+                        <option key={t} value={t}>
+                          {dimensionTypeLabel(t)}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                  <Input
+                    aria-label={`Segment ${index + 1} code`}
+                    className="w-28 font-mono"
+                    value={seg.code}
+                    disabled={seg.locked}
+                    onChange={(e) =>
+                      updateSegmentRow(index, { code: e.target.value.toUpperCase() })
+                    }
+                  />
+                  <Input
+                    aria-label={`Segment ${index + 1} name`}
+                    className="w-40"
+                    value={seg.name}
+                    disabled={seg.locked}
+                    onChange={(e) => updateSegmentRow(index, { name: e.target.value })}
+                  />
+                  <Select
+                    aria-label={`Segment ${index + 1} required`}
+                    className="w-32"
+                    value={seg.isRequired ? 'MANDATORY' : 'OPTIONAL'}
+                    disabled={seg.locked}
+                    onChange={(e) =>
+                      updateSegmentRow(index, { isRequired: e.target.value === 'MANDATORY' })
+                    }
+                  >
+                    <option value="MANDATORY">Mandatory</option>
+                    <option value="OPTIONAL">Optional</option>
+                  </Select>
+                  {!seg.locked && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSegmentRow(index)}
+                      aria-label={`Remove segment ${index + 1}`}
+                      className="text-slate hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {addErrors.segments && <p className="mt-1 text-xs text-red-600">{addErrors.segments}</p>}
+          <Button
+            variant="secondary"
+            className="mt-2 px-3 py-1.5 text-xs"
+            onClick={handleAddSegmentRow}
+            disabled={!canAddSegment}
+          >
+            + Add Segment
+          </Button>
+        </div>
+
+        <div className="rounded-md border border-border bg-offwhite px-3 py-2 font-mono text-sm text-navy">
+          Preview: {buildCombinationPreview(addForm.segments.map((s) => s.code))}
+        </div>
+
+        {addSubmitError && <p className="text-xs text-red-600">{addSubmitError}</p>}
+      </div>
+    </Modal>
+  );
+}
+
+export default function CoaStructurePage() {
+  const { user, hasPermission } = useAuth();
+  const { showToast } = useToast();
+  const canManage = hasPermission('gl:ledger:manage');
+
+  const [structures, setStructures] = useState<CoaStructure[]>([]);
+  const [formats, setFormats] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const [editingStructure, setEditingStructure] = useState<CoaStructure | null>(null);
+
+  async function loadStructures() {
+    if (!user?.businessGroupId) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(false);
+    try {
+      const data = await listCoaStructures(user.businessGroupId);
+      const list = Array.isArray(data) ? data : [];
+      setStructures(list);
+      const entries = await Promise.all(
+        list.map(async (s) => {
+          try {
+            return [s.id, await getCoaCombinationFormat(s.id)] as const;
+          } catch {
+            return [
+              s.id,
+              buildCombinationPreview(
+                [...s.segments].sort((a, b) => a.segmentNumber - b.segmentNumber).map((seg) => seg.code),
+                s.separator,
+              ),
+            ] as const;
+          }
+        }),
+      );
+      setFormats(Object.fromEntries(entries));
+    } catch {
+      setError(true);
+      showToast('Failed to load COA Structures.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStructures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const totalStructures = structures.length;
+  const activeStructures = structures.filter((s) => s.isActive).length;
+  const totalLedgersUsing = structures.reduce((sum, s) => sum + s.assignedLedgerCount, 0);
+
+  const openAdd = () => setShowAddModal(true);
+  const closeAdd = useCallback(() => setShowAddModal(false), []);
+
+  const handleAddSaved = () => {
+    setShowAddModal(false);
+    loadStructures();
   };
 
   const noStructuresAtAll = !loading && !error && totalStructures === 0;
@@ -430,149 +583,12 @@ export default function CoaStructurePage() {
         )}
       </div>
 
-      {showAddModal && (
-        <Modal
-          title="Add COA Structure"
-          onClose={() => setShowAddModal(false)}
-          widthClassName="max-w-2xl"
-          footer={
-            <>
-              <Button variant="secondary" onClick={() => setShowAddModal(false)} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreate} loading={saving}>
-                Save
-              </Button>
-            </>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                id="coa-code"
-                label="Code"
-                required
-                value={addForm.code}
-                onChange={(e) => setAddForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
-                error={addErrors.code}
-                placeholder="e.g. STD-IND-SVC"
-              />
-              <Input
-                id="coa-name"
-                label="Name"
-                required
-                value={addForm.name}
-                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-                error={addErrors.name}
-              />
-              <div className="col-span-2">
-                <label htmlFor="coa-description" className="text-xs font-medium uppercase tracking-wide text-slate">
-                  Description
-                </label>
-                <textarea
-                  id="coa-description"
-                  value={addForm.description}
-                  onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={2}
-                  className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-[#1E293B] outline-none focus:border-blue focus:ring-1 focus:ring-blue"
-                />
-              </div>
-              <Input id="coa-separator" label="Separator" value="." disabled />
-            </div>
-
-            <div className="border-t border-border pt-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate">Segments</p>
-              <div className="mt-2 flex flex-col gap-2">
-                {addForm.segments.map((seg, index) => {
-                  const options = OPTIONAL_DIMENSION_TYPES.filter(
-                    (t) => t === seg.dimensionType || !usedOptionalTypes.includes(t),
-                  );
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-offwhite px-3 py-2"
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy text-xs font-semibold text-white">
-                        {index + 1}
-                      </span>
-                      {seg.locked ? (
-                        <span className="flex-1 text-sm font-medium text-navy">
-                          Natural Account (locked)
-                        </span>
-                      ) : (
-                        <Select
-                          aria-label={`Segment ${index + 1} dimension type`}
-                          className="flex-1"
-                          value={seg.dimensionType}
-                          onChange={(e) => handleSegmentTypeChange(index, e.target.value)}
-                        >
-                          {options.map((t) => (
-                            <option key={t} value={t}>
-                              {dimensionTypeLabel(t)}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                      <Input
-                        aria-label={`Segment ${index + 1} code`}
-                        className="w-28 font-mono"
-                        value={seg.code}
-                        disabled={seg.locked}
-                        onChange={(e) =>
-                          updateSegmentRow(index, { code: e.target.value.toUpperCase() })
-                        }
-                      />
-                      <Input
-                        aria-label={`Segment ${index + 1} name`}
-                        className="w-40"
-                        value={seg.name}
-                        disabled={seg.locked}
-                        onChange={(e) => updateSegmentRow(index, { name: e.target.value })}
-                      />
-                      <Select
-                        aria-label={`Segment ${index + 1} required`}
-                        className="w-32"
-                        value={seg.isRequired ? 'MANDATORY' : 'OPTIONAL'}
-                        disabled={seg.locked}
-                        onChange={(e) =>
-                          updateSegmentRow(index, { isRequired: e.target.value === 'MANDATORY' })
-                        }
-                      >
-                        <option value="MANDATORY">Mandatory</option>
-                        <option value="OPTIONAL">Optional</option>
-                      </Select>
-                      {!seg.locked && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSegmentRow(index)}
-                          aria-label={`Remove segment ${index + 1}`}
-                          className="text-slate hover:text-red-600"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              {addErrors.segments && <p className="mt-1 text-xs text-red-600">{addErrors.segments}</p>}
-              <Button
-                variant="secondary"
-                className="mt-2 px-3 py-1.5 text-xs"
-                onClick={handleAddSegmentRow}
-                disabled={!canAddSegment}
-              >
-                + Add Segment
-              </Button>
-            </div>
-
-            <div className="rounded-md border border-border bg-offwhite px-3 py-2 font-mono text-sm text-navy">
-              Preview: {buildCombinationPreview(addForm.segments.map((s) => s.code))}
-            </div>
-
-            {addSubmitError && <p className="text-xs text-red-600">{addSubmitError}</p>}
-          </div>
-        </Modal>
+      {showAddModal && user?.businessGroupId && (
+        <AddCoaStructureModal
+          businessGroupId={user.businessGroupId}
+          onClose={closeAdd}
+          onSaved={handleAddSaved}
+        />
       )}
 
       {editingStructure && user && (
