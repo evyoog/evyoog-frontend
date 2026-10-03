@@ -6,13 +6,8 @@ export const OPTIONAL_DIMENSION_TYPES = [
   'PRODUCT',
   'PROJECT',
   'INTERCOMPANY',
-  'CUSTOM_1',
-  'CUSTOM_2',
-  'CUSTOM_3',
-  'CUSTOM_4',
-  'CUSTOM_5',
-  'CUSTOM_6',
-  'CUSTOM_7',
+  'CUSTOM',
+  'SPARE',
 ];
 
 const DIMENSION_TYPE_LABELS: Record<string, string> = {
@@ -22,11 +17,13 @@ const DIMENSION_TYPE_LABELS: Record<string, string> = {
   PRODUCT: 'Product',
   PROJECT: 'Project',
   INTERCOMPANY: 'Intercompany',
+  CUSTOM: 'Custom',
+  SPARE: 'Spare',
 };
 
 export function dimensionTypeLabel(type: string): string {
   if (DIMENSION_TYPE_LABELS[type]) return DIMENSION_TYPE_LABELS[type];
-  if (type.startsWith('CUSTOM_')) return `Custom ${type.split('_')[1]}`;
+
   return type;
 }
 
